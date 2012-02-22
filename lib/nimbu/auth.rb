@@ -1,3 +1,4 @@
+require "yaml"
 require "nimbu"
 require "nimbu/client"
 require "nimbu/helpers"
@@ -7,6 +8,7 @@ class Nimbu::Auth
 
     include Nimbu::Helpers
     attr_accessor :credentials
+    attr_accessor :configuration
 
     def client
       @client ||= begin
@@ -31,11 +33,57 @@ class Nimbu::Auth
     end
 
     def default_host
-      "nimbu.com"
+      "getnimbu.com"
     end
 
     def host
-      ENV['HEROKU_HOST'] || default_host
+      ENV['NIMBU_HOST'] || get_nimbu_host
+    end
+
+    def get_nimbu_host
+      get_configuration[:hostname]
+    end
+
+    def get_configuration    # :nodoc:
+      @configuration ||= (read_configuration || ask_for_and_save_configuration)
+    end
+
+    def ask_for_and_save_configuration
+      @configuration = ask_for_configuration
+      write_configuration
+      @configuration
+    end
+
+    def configuration_file
+      "#{Dir.pwd}/nimbu.yml"
+    end
+
+    def delete_configuration
+      FileUtils.rm_f(configuration_file)
+      @host = nil
+    end
+
+   def ask_for_configuration
+      puts "What is the hostname for this Nimbu site?"
+      print "Hostname: "
+      hostname = ask
+
+      puts "What is the theme you are developing in this directory?"
+      print "Theme (i.e. default): "
+      theme = ask
+
+      {:hostname => hostname, :theme => theme}
+    end
+
+    def read_configuration
+      File.exists?(configuration_file) and YAML::load(File.open( configuration_file ))
+    end
+
+    def write_configuration
+      FileUtils.mkdir_p(File.dirname(configuration_file))
+      File.open(configuration_file, 'w') {|credentials| credentials.puts(YAML.dump(self.configuration))}
+      FileUtils.chmod(0700, File.dirname(configuration_file))
+      FileUtils.chmod(0600, configuration_file)
     end
 
     def reauthorize
@@ -72,8 +120,8 @@ class Nimbu::Auth
     end
 
     def read_credentials
-      if ENV['HEROKU_API_KEY']
-        ['', ENV['HEROKU_API_KEY']]
+      if ENV['NIMBU_API_KEY']
+        ['', ENV['NIMBU_API_KEY']]
       else
         File.exists?(credentials_file) and File.read(credentials_file).split("\n")
       end
@@ -155,7 +203,6 @@ class Nimbu::Auth
         delete_credentials
         raise e
       end
-      check_for_associated_ssh_key unless Nimbu::Command.current_command == "keys:add"
       @credentials
     end
 
