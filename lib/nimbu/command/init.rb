@@ -1,8 +1,10 @@
 require "nimbu/command/base"
+require 'term/ansicolor'
 
 # authentication (login, logout)
 #
 class Nimbu::Command::Init < Nimbu::Command::Base
+  include Term::ANSIColor
 
   # index
   #

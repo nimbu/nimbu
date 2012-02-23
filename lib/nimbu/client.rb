@@ -73,6 +73,26 @@ class Nimbu::Client
     post("/engine/render",params)
   end
 
+  def list_themes
+    get("/themes")
+  end
+
+  def show_theme_contents(theme)
+    get("/themes/#{theme}/list")
+  end
+
+  def fetch_theme_layout(theme,id)
+    get("/themes/#{theme}/layouts/#{id}")
+  end
+
+  def fetch_theme_template(theme,id)
+    get("/themes/#{theme}/templates/#{id}")
+  end
+
+  def fetch_theme_assets(theme,id)
+    get("/themes/#{theme}/assets/#{id}")
+  end
+
 
   ##################
 

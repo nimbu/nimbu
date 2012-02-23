@@ -37,11 +37,19 @@ class Nimbu::Auth
     end
 
     def host
-      ENV['NIMBU_HOST'] || get_nimbu_host
+      @host ||= ENV['NIMBU_HOST'] || get_nimbu_host
+    end
+
+    def theme
+      @theme ||= ENV['NIMBU_THEME'] || get_nimbu_theme
     end
 
     def get_nimbu_host
       get_configuration[:hostname]
+    end
+
+    def get_nimbu_theme
+      get_configuration[:theme]
     end
 
     def get_configuration    # :nodoc:
