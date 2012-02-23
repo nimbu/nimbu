@@ -41,7 +41,7 @@ module Nimbu
           # There seems to be a special layout?
           layout = $1
         else
-          layout = 'default'
+          layout = 'default.liquid'
         end
 
         # Read the layout file
