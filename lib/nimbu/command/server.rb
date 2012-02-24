@@ -12,8 +12,8 @@ class Nimbu::Command::Server < Nimbu::Command::Base
   #
   def index
     # Check if config file is present?
-    if !Nimbu::Auth.read_configuration
-      print red(bold("WARNING")), ": this directory does not seem to contain any Nimbu theme. \n ==> Run \"", bold { "nimbu init ."}, "\" to initialize a new Nimbu project."
+    if !Nimbu::Auth.read_configuration && !Nimbu::Auth.read_credentials
+      print red(bold("ERROR")), ": this directory does not seem to contain any Nimbu theme or your credentials are not set. \n ==> Run \"", bold { "nimbu init"}, "\" to initialize this directory."
     else
       puts "Starting the server..."
       Nimbu::Server::Base.run!

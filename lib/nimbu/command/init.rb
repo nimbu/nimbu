@@ -11,7 +11,7 @@ class Nimbu::Command::Init < Nimbu::Command::Base
   # log in with your nimbu credentials
   #
   def index
-    if Nimbu::Auth.read_configuration
+    if Nimbu::Auth.read_configuration && Nimbu::Auth.read_credentials
       print green(bold("CONGRATULATIONS!")), ": this directory is already configured as a Nimbu theme."
     else
       display "Initialize the Nimbu configuration file."

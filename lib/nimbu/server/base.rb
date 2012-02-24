@@ -1,5 +1,4 @@
 require 'sinatra'
-require 'haml' # if you use haml views
 require "vendor/nimbu/okjson"
 
 module Nimbu
