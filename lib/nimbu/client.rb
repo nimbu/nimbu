@@ -93,6 +93,17 @@ class Nimbu::Client
     get("/themes/#{theme}/assets/#{id}")
   end
 
+  def upload_layout(theme,name,content)
+    post("/themes/#{theme}/layouts", {:name => name, :content => content})
+  end
+
+  def upload_template(theme,name,content)
+    post("/themes/#{theme}/templates", {:name => name, :content => content})
+  end
+
+  def upload_asset(theme,name,file)
+    post("/themes/#{theme}/assets", {:name => name, :file => file})
+  end
 
   ##################
 
