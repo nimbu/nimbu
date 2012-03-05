@@ -111,7 +111,7 @@ class Nimbu::Client
     if http_proxy
       RestClient.proxy = http_proxy
     end
-    resource = RestClient::Resource.new(realize_full_uri(uri), options.merge(:user => password))
+    resource = RestClient::Resource.new(realize_full_uri(uri), options)
     resource
   end
 
@@ -165,7 +165,8 @@ class Nimbu::Client
 
   def nimbu_headers   # :nodoc:
     {
-      'X-Nimbu-API-Version' => '1',
+      'X-Nimbu-API-Version'  => '1',
+      'X-Nimbu-Token'       => password,
       'User-Agent'           => self.class.gem_version_string,
       'X-Ruby-Version'       => RUBY_VERSION,
       'X-Ruby-Platform'      => RUBY_PLATFORM
