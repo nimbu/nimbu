@@ -69,8 +69,12 @@ class Nimbu::Client
     post("/engine/template",params)
   end
 
-  def get_page(params)
+  def get_request(params)
     post("/engine/render",params)
+  end
+
+  def post_request(params)
+    post("/engine/process",params)
   end
 
   def list_themes
