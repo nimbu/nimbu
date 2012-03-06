@@ -90,6 +90,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
   #
   def push
     simulate = args.include?("--dry-run") || args.include?("-d")
+    liquid_only = args.include?("--liquid-only") || args.include?("--liquid")
     css_only = args.include?("--css-only") || args.include?("--css")
     js_only = args.include?("--js-only") || args.include?("-js")
 
@@ -125,41 +126,43 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
       end
     end
 
-    css_glob = Dir.glob("#{Dir.pwd}/stylesheets/**/*.css")
-    css_files = css_glob.map {|dir| dir.gsub("#{Dir.pwd}/stylesheets/","")}
-    if !js_only
-      print "\nStylesheet:\n"
-      css_files.each do |css|
-        file = "#{Dir.pwd}/stylesheets/#{css}"
-        next if File.directory?(file) || (!anyFileWithWord?(layouts_glob,css) && !anyFileWithWord?(templates_glob,css))
-        nimbu.upload_asset(theme, "stylesheets/#{css}", File.open(file))
-        print " - stylesheets/#{css}"
-        print " (ok)\n"
+    if !liquid_only
+      css_glob = Dir.glob("#{Dir.pwd}/stylesheets/**/*.css")
+      css_files = css_glob.map {|dir| dir.gsub("#{Dir.pwd}/stylesheets/","")}
+      if !js_only
+        print "\nStylesheet:\n"
+        css_files.each do |css|
+          file = "#{Dir.pwd}/stylesheets/#{css}"
+          next if File.directory?(file) || (!anyFileWithWord?(layouts_glob,css) && !anyFileWithWord?(templates_glob,css))
+          nimbu.upload_asset(theme, "stylesheets/#{css}", File.open(file))
+          print " - stylesheets/#{css}"
+          print " (ok)\n"
+        end
       end
-    end
 
-    js_glob = Dir.glob("#{Dir.pwd}/javascripts/**/*.js")
-    js_files = js_glob.map {|dir| dir.gsub("#{Dir.pwd}/javascripts/","")}
-    if !css_only
-      print "\nJavascripts:\n"
-      js_files.each do |js|
-        file = "#{Dir.pwd}/javascripts/#{js}"
-        next if File.directory?(file) || (!anyFileWithWord?(layouts_glob,js) && !anyFileWithWord?(templates_glob,js))
-        nimbu.upload_asset(theme, "javascripts/#{js}", File.open(file))
-        print " - javascripts/#{js}"
-        print " (ok)\n"
+      js_glob = Dir.glob("#{Dir.pwd}/javascripts/**/*.js")
+      js_files = js_glob.map {|dir| dir.gsub("#{Dir.pwd}/javascripts/","")}
+      if !css_only
+        print "\nJavascripts:\n"
+        js_files.each do |js|
+          file = "#{Dir.pwd}/javascripts/#{js}"
+          next if File.directory?(file) || (!anyFileWithWord?(layouts_glob,js) && !anyFileWithWord?(templates_glob,js))
+          nimbu.upload_asset(theme, "javascripts/#{js}", File.open(file))
+          print " - javascripts/#{js}"
+          print " (ok)\n"
+        end
       end
-    end
 
-    image_files = Dir.glob("#{Dir.pwd}/images/**/*").map {|dir| dir.gsub("#{Dir.pwd}/images/","")}
-    if !(css_only || js_only)
-      print "\nImages:\n"
-      image_files.each do |image|
-        file = "#{Dir.pwd}/images/#{image}"
-        next if File.directory?(file) || (!anyFileWithWord?(css_glob,image) && !anyFileWithWord?(js_glob,image) && !anyFileWithWord?(layouts_glob,image) && !anyFileWithWord?(templates_glob,image))
-        nimbu.upload_asset(theme, "images/#{image}", File.open(file))
-        print " - images/#{image}"
-        print " (ok)\n"
+      image_files = Dir.glob("#{Dir.pwd}/images/**/*").map {|dir| dir.gsub("#{Dir.pwd}/images/","")}
+      if !(css_only || js_only)
+        print "\nImages:\n"
+        image_files.each do |image|
+          file = "#{Dir.pwd}/images/#{image}"
+          next if File.directory?(file) || (!anyFileWithWord?(css_glob,image) && !anyFileWithWord?(js_glob,image) && !anyFileWithWord?(layouts_glob,image) && !anyFileWithWord?(templates_glob,image))
+          nimbu.upload_asset(theme, "images/#{image}", File.open(file))
+          print " - images/#{image}"
+          print " (ok)\n"
+        end
       end
     end
   end
