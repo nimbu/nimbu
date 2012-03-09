@@ -3,6 +3,7 @@ require "nimbu/server/base"
 require 'term/ansicolor'
 require 'compass'
 require 'compass/exec'
+require 'thin'
 
 # running a local server to speed up designing Nimbu themes
 #
@@ -17,23 +18,71 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     if !Nimbu::Auth.read_configuration && !Nimbu::Auth.read_credentials
       print red(bold("ERROR")), ": this directory does not seem to contain any Nimbu theme or your credentials are not set. \n ==> Run \"", bold { "nimbu init"}, "\" to initialize this directory."
     else
-      server_pid = fork do
-        puts "Starting the server..."
-        Nimbu::Server::Base.run!
+      puts white("\nStarting up Nimbu Server + Compass + HAML compiler...")
+      puts green(
+            "             _   ___            __         \n" +
+            "            / | / (_)____ ___  / /_  __  __\n" +
+            "           /  |/ / // __ `__ \\/ __ \\/ / / /\n" +
+            "          / /|  / // / / / / / /_/ / /_/ / \n" +
+            "         /_/ |_/_//_/ /_/ /_/_.___/\\__,_/  \n")
+
+      rd1, wr1 = IO::pipe
+      rd2, wr2 = IO::pipe
+      rd3, wr3 = IO::pipe
+
+      server_pid = Process.fork do
+        $stdout.reopen(wr1)
+        rd1.close
+        puts "Starting..."
+        options = {
+          :Port               => 4567,
+          :DocumentRoot       => Dir.pwd
+        }
+        Rack::Handler::Thin.run Nimbu::Server::Base, options  do |server|
+          [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
+        end
       end
-      haml_pid = fork do
-        puts "Watching haml files..."
+      haml_pid = Process.fork do
+        $stdout.reopen(wr2)
+        rd2.close
+        puts "Starting..."
         HamlWatcher.watch
       end
-      compass_pid = fork do
-        puts "Watching compass files..."
+      compass_pid = Process.fork do
+        $stdout.reopen(wr3)
+        rd3.close
+        puts "Starting..."
         Compass::Exec::SubCommandUI.new(["watch","."]).run!
       end
+      watch_server_pid = Process.fork do
+        trap('INT') { exit }
+        wr1.close
+        rd1.each do |line|  
+          print cyan("SERVER:  ") + white(line) + ""
+        end
+      end
+      watch_haml_pid = Process.fork do
+        trap('INT') { exit }
+        wr2.close
+        rd2.each do |line|  
+          print magenta("HAML:    ") + white(line) + ""
+        end
+      end
+      watch_compass_pid = Process.fork do
+        trap('INT') { exit }
+        wr3.close
+        rd3.each do |line|  
+          print yellow("COMPASS: ") + white(line) + ""
+        end
+      end
 
-      Process.wait(server_pid)
-      Process.wait(haml_pid)
-      Process.wait(compass_pid)  
-      
+      [:INT, :TERM].each do |sig| 
+        trap(sig) do
+          puts green("\n\n== Nimbu has ended its work " + bold("(crowd applauds!)\n"))
+        end
+      end
+
+      Process.waitall      
     end
   end
 end
@@ -48,7 +97,7 @@ class HamlWatcher
     
     def watch
       refresh
-      puts ">>> HamlWatcher is watching for changes. Press Ctrl-C to Stop."
+      puts ">>> Haml is polling for changes. Press Ctrl-C to Stop."
       FSSM.monitor('haml', '**/*.haml') do
         update do |base, relative|
           puts ">>> Change detected to: #{relative}"

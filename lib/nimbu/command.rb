@@ -157,7 +157,7 @@ module Nimbu
     rescue OptionParser::ParseError => ex
       commands[cmd] ? run("help", [cmd]) : run("help")
     rescue Interrupt => e
-      error "\n[canceled]"
+      error "\n[exited]"
     end
 
     def self.parse(cmd)
