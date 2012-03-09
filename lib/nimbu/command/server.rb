@@ -18,7 +18,10 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     if !Nimbu::Auth.read_configuration && !Nimbu::Auth.read_credentials
       print red(bold("ERROR")), ": this directory does not seem to contain any Nimbu theme or your credentials are not set. \n ==> Run \"", bold { "nimbu init"}, "\" to initialize this directory."
     else
-      puts white("\nStarting up Nimbu Server + Compass + HAML compiler...")
+      no_haml = args.include?("--no-haml")
+      no_compass = args.include?("--no-compass")
+
+      puts white("\nStarting up Nimbu Server" + (no_compass ? "" : " + Compass Watcher") + (no_haml ? "" : " + HAML Compiler") + "...")
       puts green(
             "             _   ___            __         \n" +
             "            / | / (_)____ ___  / /_  __  __\n" +
@@ -42,18 +45,22 @@ class Nimbu::Command::Server < Nimbu::Command::Base
           [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
         end
       end
+
       haml_pid = Process.fork do
         $stdout.reopen(wr2)
         rd2.close
         puts "Starting..."
         HamlWatcher.watch
-      end
+      end unless no_haml
+
       compass_pid = Process.fork do
         $stdout.reopen(wr3)
         rd3.close
         puts "Starting..."
         Compass::Exec::SubCommandUI.new(["watch","."]).run!
-      end
+      end unless no_compass
+
+
       watch_server_pid = Process.fork do
         trap('INT') { exit }
         wr1.close
@@ -67,14 +74,15 @@ class Nimbu::Command::Server < Nimbu::Command::Base
         rd2.each do |line|  
           print magenta("HAML:    ") + white(line) + ""
         end
-      end
+      end unless no_haml
+
       watch_compass_pid = Process.fork do
         trap('INT') { exit }
         wr3.close
         rd3.each do |line|  
           print yellow("COMPASS: ") + white(line) + ""
         end
-      end
+      end unless no_compass
 
       [:INT, :TERM].each do |sig| 
         trap(sig) do
