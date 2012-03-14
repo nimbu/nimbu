@@ -21,6 +21,11 @@ class Nimbu::Command::Server < Nimbu::Command::Base
       no_haml = args.include?("--no-haml")
       no_compass = args.include?("--no-compass")
 
+      if !(File.exists?(File.join(Dir.pwd,'haml')) && File.directory?(File.join(Dir.pwd,'haml')))
+          no_haml = true
+          puts red("\n !! WARNING: no ./haml directory detected => starting without HAML support !!")
+      end
+
       puts white("\nStarting up Nimbu Server" + (no_compass ? "" : " + Compass Watcher") + (no_haml ? "" : " + HAML Compiler") + "...")
       puts green(
             "             _   ___            __         \n" +
