@@ -91,7 +91,9 @@ class Nimbu::Command::Server < Nimbu::Command::Base
 
       [:INT, :TERM].each do |sig| 
         trap(sig) do
-          puts green("\n\n== Nimbu has ended its work " + bold("(crowd applauds!)\n"))
+          puts yellow("\n== Waiting for all processes to finish...")
+          Process.waitall
+          puts green("== Nimbu has ended its work " + bold("(crowd applauds!)\n"))
         end
       end
 
