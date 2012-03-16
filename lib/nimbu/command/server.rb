@@ -15,7 +15,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
   #
   def index
     # Check if config file is present?
-    if !Nimbu::Auth.read_configuration && !Nimbu::Auth.read_credentials
+    if !Nimbu::Auth.read_configuration || !Nimbu::Auth.read_credentials
       print red(bold("ERROR")), ": this directory does not seem to contain any Nimbu theme or your credentials are not set. \n ==> Run \"", bold { "nimbu init"}, "\" to initialize this directory."
     else
       no_haml = args.include?("--no-haml")
