@@ -1,5 +1,6 @@
 require 'sinatra'
 require "sinatra/reloader"
+require "sinatra/multi_route"
 require "vendor/nimbu/okjson"
 require 'term/ansicolor'
 
@@ -7,6 +8,8 @@ module Nimbu
   module Server
     class Base < Sinatra::Base
       include Term::ANSIColor
+      register Sinatra::MultiRoute
+
       enable :sessions
 
       configure :development do
@@ -30,23 +33,32 @@ module Nimbu
         return ""
       end
 
-      post '*' do
-        path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
-        result = json_decode(nimbu.post_request({:path => path, :extra => params, :session => session}))
+      # post '*' do
+      #   path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
+      #   result = json_decode(nimbu.post_request({:path => path, :extra => params, :session => session}))
 
-        session[:logged_in] = true if result["logged_in"]
-        session[:flash] = result["flash"] if result["flash"]
-        redirect result["redirect_to"] if result["redirect_to"]
-      end
+      #   session[:logged_in] = true if result["logged_in"]
+      #   session[:flash] = result["flash"] if result["flash"]
+      #   redirect result["redirect_to"] and return if result["redirect_to"]
+      # end
 
-      get '*' do
-        # First get the template name and necessary subtemplates
-        puts green("Getting template for #{request.fullpath}")
-        path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
-        result = json_decode(nimbu.get_template({:path => path, :extra => params}))
+      route :get, :post, '*' do
+        if request.post?
+          path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
+          result = json_decode(nimbu.post_request({:path => path, :extra => params, :session => session, :method => "post"}))
 
-        session[:logged_in] = result["logged_in"] if result.has_key?("logged_in")
-        redirect result["redirect_to"] if result["redirect_to"]
+          session[:logged_in] = true if result["logged_in"]
+          session[:flash] = result["flash"] if result["flash"]
+          redirect result["redirect_to"] and return if result["redirect_to"]
+        else
+          # First get the template name and necessary subtemplates
+          puts green("Getting template for #{request.fullpath}")
+          path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
+          result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get"}))
+
+          session[:logged_in] = result["logged_in"] if result.has_key?("logged_in")
+          redirect result["redirect_to"] and return if result["redirect_to"]
+        end
         
         if result["template"].nil?
           raise Sinatra::NotFound
@@ -86,14 +98,12 @@ module Nimbu
 
         # Send the templates to the browser
         begin
-          response = nimbu.get_request({:path => path, :template => template_code, :layout => layout_code, :extra => params, :logged_in => session[:logged_in]})
+          response = nimbu.get_request({:path => path, :template => template_code, :layout => layout_code, :extra => params, :logged_in => session[:logged_in], :method => request.post? ? "post" : "get"})
           results = json_decode(response)
           return "#{results["result"]}"
         rescue RestClient::Exception => error
           return error.http_body
-        end
-
-        
+        end       
       end
 
       error 404 do
