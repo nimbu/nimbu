@@ -45,7 +45,11 @@ module Nimbu
       route :get, :post, '*' do
         if request.post?
           path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
-          result = json_decode(nimbu.post_request({:path => path, :extra => params, :session => session, :method => "post"}))
+          begin
+            result = json_decode(nimbu.post_request({:path => path, :extra => params, :session => session, :method => "post", :logged_in => session[:logged_in]})) 
+          rescue Exception => e
+            return e.http_body
+          end
 
           session[:logged_in] = true if result["logged_in"]
           session[:flash] = result["flash"] if result["flash"]
@@ -54,7 +58,11 @@ module Nimbu
           # First get the template name and necessary subtemplates
           puts green("Getting template for #{request.fullpath}")
           path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
-          result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get"}))
+          begin
+            result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get", :extra => params, :logged_in => session[:logged_in]}))
+          rescue Exception => e
+            return e.http_body
+          end
 
           session[:logged_in] = result["logged_in"] if result.has_key?("logged_in")
           redirect result["redirect_to"] and return if result["redirect_to"]
