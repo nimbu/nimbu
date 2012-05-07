@@ -42,11 +42,15 @@ module Nimbu
       #   redirect result["redirect_to"] and return if result["redirect_to"]
       # end
 
-      route :get, :post, '*' do
-        if request.post?
+      route :get, :post, :put, :delete, '*' do
+        if request.post? || request.put? || request.delete?
           path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
           begin
-            result = json_decode(nimbu.post_request({:path => path, :extra => params, :session => session, :method => "post", :logged_in => session[:logged_in]})) 
+            method = "post" if request.post?
+            method = "put" if request.put?
+            method = "delete" if request.delete?
+
+            result = json_decode(nimbu.post_request({:path => path, :extra => params, :session => session, :method => method, :logged_in => session[:logged_in]})) 
           rescue Exception => e
             return e.http_body
           end
