@@ -43,6 +43,14 @@ module Nimbu
       # end
 
       route :get, :post, :put, :delete, '*' do
+        verb = (
+          if request.get? then "GET"
+          elsif request.post? then "POST"
+          elsif request.put? then "PUT"
+          elsif request.delete? then "DELETE"  
+          end
+        )
+        puts green("#{verb} #{request.fullpath}")
         if request.post? || request.put? || request.delete?
           path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
           begin
@@ -60,7 +68,6 @@ module Nimbu
           redirect result["redirect_to"] and return if result["redirect_to"]
         else
           # First get the template name and necessary subtemplates
-          puts green("Getting template for #{request.fullpath}")
           path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
           begin
             result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get", :extra => params, :logged_in => session[:logged_in]}))
@@ -77,7 +84,7 @@ module Nimbu
         end
         template = result["template"].gsub(/buddha$/,'liquid')
         # Then render everything
-        puts green("Uploading assets for template '#{template}'")
+        puts green(" => using template '#{template}'")
         # Read the template file
         template_file = File.join(Dir.pwd,'templates',template)
         if File.exists?(template_file)
