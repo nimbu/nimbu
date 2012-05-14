@@ -3,6 +3,7 @@ require "sinatra/reloader"
 require "sinatra/multi_route"
 require "vendor/nimbu/okjson"
 require 'term/ansicolor'
+require "base64"
 
 module Nimbu
   module Server
@@ -43,39 +44,45 @@ module Nimbu
       # end
 
       route :get, :post, :put, :delete, '*' do
-        verb = (
-          if request.get? then "GET"
-          elsif request.post? then "POST"
-          elsif request.put? then "PUT"
-          elsif request.delete? then "DELETE"  
+
+        method = (
+          if request.get? then "get"
+          elsif request.post? then "post"
+          elsif request.put? then "put"
+          elsif request.delete? then "delete"  
           end
         )
-        puts green("#{verb} #{request.fullpath}")
+        puts green("#{method.upcase} #{request.fullpath}")
+
         if request.post? || request.put? || request.delete?
           path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
           begin
-            method = "post" if request.post?
-            method = "put" if request.put?
-            method = "delete" if request.delete?
-
-            result = json_decode(nimbu.post_request({:path => path, :extra => params, :session => session, :method => method, :logged_in => session[:logged_in]})) 
+            response = nimbu.post_request({:path => path, :extra => params, :method => method, :client_session => session })
+            puts "RESPONSE: #{response}" if Nimbu.debug
+            result = json_decode(response)
+            puts result if Nimbu.debug
+            parse_session(result)
           rescue Exception => e
-            return e.http_body
+            if e.respond_to?(:http_body)
+              return e.http_body
+            else
+              raise e
+            end
           end
 
-          session[:logged_in] = true if result["logged_in"]
           session[:flash] = result["flash"] if result["flash"]
           redirect result["redirect_to"] and return if result["redirect_to"]
         else
           # First get the template name and necessary subtemplates
           path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
           begin
-            result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get", :extra => params, :logged_in => session[:logged_in]}))
+            result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get", :extra => params, :client_session => session }))
+            puts result if Nimbu.debug
+            parse_session(result)            
           rescue Exception => e
             return e.http_body
           end
 
-          session[:logged_in] = result["logged_in"] if result.has_key?("logged_in")
           redirect result["redirect_to"] and return if result["redirect_to"]
         end
         
@@ -117,8 +124,9 @@ module Nimbu
 
         # Send the templates to the browser
         begin
-          response = nimbu.get_request({:path => path, :template => template_code, :layout => layout_code, :extra => params, :logged_in => session[:logged_in], :method => request.post? ? "post" : "get"})
-          results = json_decode(response)
+          results = json_decode(nimbu.get_request({:path => path, :template => template_code, :layout => layout_code, :extra => params, :method => method, :client_session => session }))
+          puts result if Nimbu.debug
+          parse_session(results)
           return "#{results["result"]}"
         rescue RestClient::Exception => error
           return error.http_body
@@ -174,6 +182,20 @@ module Nimbu
       
       def nimbu
         Nimbu::Auth.client
+      end
+
+      def parse_session(response)
+        if !response["client_session"].nil?
+          response["client_session"].each do |key,value|
+            session[key.to_sym] = value
+            puts "Session: :#{key} => #{value}" if Nimbu.debug
+          end
+          session.each do |key,value|
+            if !response["client_session"].has_key?(key.to_s)
+              session.delete(key)
+            end
+          end
+        end
       end
 
     end

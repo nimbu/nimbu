@@ -20,6 +20,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     else
       no_haml = args.include?("--no-haml")
       no_compass = args.include?("--no-compass")
+      Nimbu.debug = args.include?("--debug")
 
       if !(File.exists?(File.join(Dir.pwd,'haml')) && File.directory?(File.join(Dir.pwd,'haml')))
           no_haml = true
