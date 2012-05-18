@@ -4,10 +4,13 @@ require "sinatra/multi_route"
 require "vendor/nimbu/okjson"
 require 'term/ansicolor'
 require "base64"
+require "sinatra/json"
+require 'json'
 
 module Nimbu
   module Server
     class Base < Sinatra::Base
+      helpers Sinatra::JSON
       include Term::ANSIColor
       register Sinatra::MultiRoute
 
@@ -55,9 +58,10 @@ module Nimbu
         puts green("#{method.upcase} #{request.fullpath}")
 
         if request.post? || request.put? || request.delete?
+          ##### POST / PUT / DELET #####
           path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
           begin
-            response = nimbu.post_request({:path => path, :extra => params, :method => method, :client_session => session })
+            response = nimbu.post_request({:path => path, :extra => params, :method => method, :client_session => session, :ajax => request.xhr? })
             puts "RESPONSE: #{response}" if Nimbu.debug
             result = json_decode(response)
             puts result if Nimbu.debug
@@ -71,12 +75,22 @@ module Nimbu
           end
 
           session[:flash] = result["flash"] if result["flash"]
-          redirect result["redirect_to"] and return if result["redirect_to"]
+          if request.xhr?
+            if !result["json"].nil?
+              puts "JSON: #{result["json"]["data"]}" if Nimbu.debug
+              status result["json"]["status"].to_i
+              return json(result["json"]["data"], :encoder => :to_json, :content_type => :js)
+            end
+          else
+            redirect result["redirect_to"] and return if result["redirect_to"]
+            return 200
+          end
         else
           # First get the template name and necessary subtemplates
+          ##### GET #####
           path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
           begin
-            result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get", :extra => params, :client_session => session }))
+            result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get", :extra => params, :client_session => session, :ajax => request.xhr? }))
             puts result if Nimbu.debug
             parse_session(result)            
           rescue Exception => e
@@ -124,13 +138,19 @@ module Nimbu
 
         # Send the templates to the browser
         begin
-          results = json_decode(nimbu.get_request({:path => path, :template => template_code, :layout => layout_code, :extra => params, :method => method, :client_session => session }))
+          results = json_decode(nimbu.get_request({:path => path, :template => template_code, :layout => layout_code, :extra => params, :method => method, :client_session => session, :ajax => request.xhr? }))
           puts result if Nimbu.debug
           parse_session(results)
-          return "#{results["result"]}"
+          html = results["result"]
         rescue RestClient::Exception => error
-          return error.http_body
-        end       
+          html = error.http_body
+        end   
+
+        if request.xhr?
+          return results["json"]
+        else
+          return "#{html}"    
+        end
       end
 
       error 404 do
