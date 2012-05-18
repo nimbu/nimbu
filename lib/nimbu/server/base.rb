@@ -111,7 +111,8 @@ module Nimbu
         if File.exists?(template_file)
           template_code = IO.read(template_file)
         else
-          return render_missing_template(File.join('templates',template))
+          puts red("Layout file '#{template_file}' is missing...") 
+          return render_missing(File.join('templates',template),'template')
         end
 
         if template_code=~ /You have an Error in your HAML code/
@@ -133,12 +134,27 @@ module Nimbu
           layout_code = IO.read(layout_file)
         else
           puts red("Layout file '#{layout_file}' is missing...") 
-          return "Layout file '#{layout_file}' is missing..."
+          return render_missing(File.join('layouts',layout),'layout')
+        end
+
+        puts green("    using layout '#{layout}'")
+
+        begin
+          snippets = parse_snippets(template_code)
+          snippets = parse_snippets(layout_code,snippets)
+        rescue Exception => e
+          # If there is a snippet missing, we raise an error
+          puts red("Snippet file '#{e.message}' is missing...") 
+          return render_missing(e.message,'snippet')
+        end
+
+        if snippets.any?
+          puts green("    using snippets '#{snippets.keys.join('\', \'')}'")
         end
 
         # Send the templates to the browser
         begin
-          results = json_decode(nimbu.get_request({:path => path, :template => template_code, :layout => layout_code, :extra => params, :method => method, :client_session => session, :ajax => request.xhr? }))
+          results = json_decode(nimbu.get_request({:path => path, :template => template_code, :layout => layout_code, :snippets => snippets, :extra => params, :method => method, :client_session => session, :ajax => request.xhr? }))
           puts result if Nimbu.debug
           parse_session(results)
           html = results["result"]
@@ -163,6 +179,13 @@ module Nimbu
         @messag = ""
         @messag += "<h1>A template file is missing!</h1>"
         @messag += "<p>Template location: <strong>#{template}</strong></p>"
+        return render_error(@messag)
+      end
+
+      def render_missing(file, type)
+        @messag = ""
+        @messag += "<h1>A #{type} file is missing!</h1>"
+        @messag += "<p>Expected #{type} location: <strong>#{file}</strong></p>"
         return render_error(@messag)
       end
 
@@ -216,6 +239,31 @@ module Nimbu
             end
           end
         end
+      end
+
+      def parse_snippets(code, snippets = {})
+        # Parse template file for snippets
+        search = Regexp.new("\{\% include (.*) \%\}")
+        matches = code.scan(search)
+        if !matches.empty?
+          matches.each do |snippet|
+            # There seems to be a special layout?
+            snippet_name = snippet[0].gsub(/,$/, '').gsub(/^'/, '').gsub(/'$/, '').gsub(/^"/, '').gsub(/"$/, '')
+            if !(snippet_name =~ /\.liquid$/)
+              snippet_name = "#{snippet_name}.liquid"
+            end
+            # Read the snippet file
+            snippet_file = File.join(Dir.pwd,'snippets',snippet_name)
+            if File.exists?(snippet_file)
+              snippet_code = IO.read(snippet_file)
+              snippets[snippet_name.to_sym] = snippet_code
+              self.parse_snippets(snippet_code, snippets)
+            else
+              raise "#{snippet_file}"
+            end
+          end
+        end
+        return snippets
       end
 
     end
