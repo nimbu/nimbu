@@ -41,6 +41,9 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     contents["templates"].each do |t|
       display " - templates/#{t["name"]}"
     end unless contents["templates"].nil?
+    contents["snippets"].each do |s|
+      display " - snippets/#{s["name"]}"
+    end unless contents["templates"].nil?
     contents["assets"].each do |a|
       display " - #{a["folder"]}/#{a["name"]}"
     end unless contents["assets"].nil?
@@ -105,6 +108,8 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     layouts_files = layouts_glob.map {|dir| dir.gsub("#{Dir.pwd}/layouts/","")}
     templates_glob = Dir.glob("#{Dir.pwd}/templates/**/*.liquid")
     templates_files = templates_glob.map {|dir| dir.gsub("#{Dir.pwd}/templates/","")}
+    snippets_glob = Dir.glob("#{Dir.pwd}/snippets/**/*.liquid")
+    snippets_files = snippets_glob.map {|dir| dir.gsub("#{Dir.pwd}/snippets/","")}
 
     if !(css_only || js_only)
       print "\nLayouts:\n"
@@ -122,6 +127,15 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         next if File.directory?(file)
         print " - templates/#{template}"
         nimbu.upload_template(theme, template, IO.read(file))
+        print " (ok)\n"
+      end
+
+      print "\nSnippets:\n"
+      snippets_files.each do |snippet|
+        file = "#{Dir.pwd}/snippets/#{snippet}"
+        next if File.directory?(file)
+        print " - snippets/#{snippet}"
+        nimbu.upload_snippet(theme, snippet, IO.read(file))
         print " (ok)\n"
       end
     end

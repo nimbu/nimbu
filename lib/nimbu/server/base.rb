@@ -64,7 +64,6 @@ module Nimbu
             response = nimbu.post_request({:path => path, :extra => params, :method => method, :client_session => session, :ajax => request.xhr? })
             puts "RESPONSE: #{response}" if Nimbu.debug
             result = json_decode(response)
-            puts result if Nimbu.debug
             parse_session(result)
           rescue Exception => e
             if e.respond_to?(:http_body)
@@ -83,7 +82,6 @@ module Nimbu
             end
           else
             redirect result["redirect_to"] and return if result["redirect_to"]
-            return 200
           end
         else
           # First get the template name and necessary subtemplates
@@ -103,6 +101,7 @@ module Nimbu
         if result["template"].nil?
           raise Sinatra::NotFound
         end
+
         template = result["template"].gsub(/buddha$/,'liquid')
         # Then render everything
         puts green(" => using template '#{template}'")
@@ -231,7 +230,7 @@ module Nimbu
         if !response["client_session"].nil?
           response["client_session"].each do |key,value|
             session[key.to_sym] = value
-            puts "Session: :#{key} => #{value}" if Nimbu.debug
+            #puts "Session: :#{key} => #{value}" if Nimbu.debug
           end
           session.each do |key,value|
             if !response["client_session"].has_key?(key.to_s)

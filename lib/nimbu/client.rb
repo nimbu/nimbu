@@ -105,6 +105,10 @@ class Nimbu::Client
     post("/themes/#{theme}/templates", {:name => name, :content => content})
   end
 
+  def upload_snippet(theme,name,content)
+    post("/themes/#{theme}/snippets", {:name => name, :content => content})
+  end
+
   def upload_asset(theme,name,file)
     post("/themes/#{theme}/assets", {:name => name, :file => file})
   end
