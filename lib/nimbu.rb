@@ -9,4 +9,12 @@ module Nimbu
   def self.debug
     @@debug
   end
+
+  def self.development=(value)
+    @@development = value
+  end
+
+  def self.development
+    @@development
+  end
 end

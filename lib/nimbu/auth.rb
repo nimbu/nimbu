@@ -45,11 +45,15 @@ class Nimbu::Auth
     end
 
     def get_nimbu_host
-      get_configuration[:hostname]
+      if Nimbu.development
+        get_configuration[:development]
+      else
+        get_configuration[:hostname]
+      end
     end
 
     def get_nimbu_theme
-      get_configuration[:theme]
+      get_configuration[:theme] || "default-theme"
     end
 
     def get_configuration    # :nodoc:

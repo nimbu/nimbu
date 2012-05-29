@@ -20,7 +20,6 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     else
       no_haml = args.include?("--no-haml")
       no_compass = args.include?("--no-compass")
-      Nimbu.debug = args.include?("--debug")
 
       if !(File.exists?(File.join(Dir.pwd,'haml')) && File.directory?(File.join(Dir.pwd,'haml')))
           no_haml = true
@@ -29,11 +28,13 @@ class Nimbu::Command::Server < Nimbu::Command::Base
 
       puts white("\nStarting up Nimbu Server" + (no_compass ? "" : " + Compass Watcher") + (no_haml ? "" : " + HAML Compiler") + "...")
       puts green(
-            "             _   ___            __         \n" +
+            "\n             _   ___            __         \n" +
             "            / | / (_)____ ___  / /_  __  __\n" +
             "           /  |/ / // __ `__ \\/ __ \\/ / / /\n" +
             "          / /|  / // / / / / / /_/ / /_/ / \n" +
             "         /_/ |_/_//_/ /_/ /_/_.___/\\__,_/  \n")
+
+      puts green("\nConnnected to '#{Nimbu::Auth.host}', using '#{Nimbu::Auth.theme}' theme.\n")
 
       rd1, wr1 = IO::pipe
       rd2, wr2 = IO::pipe

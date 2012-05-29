@@ -16,6 +16,9 @@ class Nimbu::Command::Base
   def initialize(args=[], options={})
     @args = args
     @options = options
+
+    Nimbu.debug = args.include?("--debug")
+    Nimbu.development = args.include?("--development") || args.include?("--dev")
   end
 
   def app
