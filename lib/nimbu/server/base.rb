@@ -14,12 +14,11 @@ module Nimbu
       include Term::ANSIColor
       register Sinatra::MultiRoute
 
-      enable :sessions
-
       configure :development do
         register Sinatra::Reloader
       end
 
+      set :method_override, true
       set :static, true                             # set up static file routing
       set :public_folder, Dir.pwd # set up the static dir (with images/js/css inside)
       
@@ -57,14 +56,60 @@ module Nimbu
         )
         puts green("#{method.upcase} #{request.fullpath}")
 
-        if request.post? || request.put? || request.delete?
-          ##### POST / PUT / DELET #####
-          path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
+        # if request.post? || request.put? || request.delete?
+        #   ##### POST / PUT / DELET #####
+        #   path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
+        #   begin
+        #     response = nimbu.post_request({:path => path, :extra => params, :method => method, :client_session => session, :ajax => request.xhr? })
+        #     puts "RESPONSE: #{response}" if Nimbu.debug
+        #     result = json_decode(response)
+        #     parse_session(result)
+        #   rescue Exception => e
+        #     if e.respond_to?(:http_body)
+        #       return e.http_body
+        #     else
+        #       raise e
+        #     end
+        #   end
+
+        #   session[:flash] = result["flash"] if result["flash"]
+        #   if request.xhr?
+        #     if !result["json"].nil?
+        #       puts "JSON: #{result["json"]["data"]}" if Nimbu.debug
+        #       status result["json"]["status"].to_i
+        #       return json(result["json"]["data"], :encoder => :to_json, :content_type => :js)
+        #     end
+        #   else
+        #     redirect result["redirect_to"] and return if result["redirect_to"]
+        #   end
+        # else
+        #   # First get the template name and necessary subtemplates
+        #   ##### GET #####
+        #   path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
+        #   begin
+        #     result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get", :extra => params, :client_session => session, :ajax => request.xhr? }))
+        #     puts result if Nimbu.debug
+        #     parse_session(result)            
+        #   rescue Exception => e
+        #     return e.http_body
+        #   end
+
+        #   redirect result["redirect_to"] and return if result["redirect_to"]
+        # end
+        ### GET THE TEMPLATES ###
+        path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
+        if !request.xhr?
           begin
-            response = nimbu.post_request({:path => path, :extra => params, :method => method, :client_session => session, :ajax => request.xhr? })
-            puts "RESPONSE: #{response}" if Nimbu.debug
-            result = json_decode(response)
-            parse_session(result)
+            params = ({} || params).merge({:simulator => {
+                            :host => request.host,
+                            :port => request.port,
+                            :path => path,  
+                            :method => method, 
+                            :session => session, 
+                            :headers => request.env.to_json,
+                          }})
+            result = json_decode(nimbu.get_template(params))
+            puts result if Nimbu.debug
           rescue Exception => e
             if e.respond_to?(:http_body)
               return e.http_body
@@ -72,100 +117,90 @@ module Nimbu
               raise e
             end
           end
+      
+          if result["template"].nil?
+            raise Sinatra::NotFound
+          end
 
-          session[:flash] = result["flash"] if result["flash"]
-          if request.xhr?
-            if !result["json"].nil?
-              puts "JSON: #{result["json"]["data"]}" if Nimbu.debug
-              status result["json"]["status"].to_i
-              return json(result["json"]["data"], :encoder => :to_json, :content_type => :js)
+          unless result["template"] == "<<<< REDIRECT >>>>"
+            template = result["template"].gsub(/buddha$/,'liquid')
+            # Then render everything
+            puts green(" => using template '#{template}'")
+            # Read the template file
+            template_file = File.join(Dir.pwd,'templates',template)
+            if File.exists?(template_file)
+              template_code = IO.read(template_file)
+            else
+              puts red("Layout file '#{template_file}' is missing...") 
+              return render_missing(File.join('templates',template),'template')
             end
-          else
-            redirect result["redirect_to"] and return if result["redirect_to"]
+
+            if template_code=~ /You have an Error in your HAML code/
+              return template_code
+            end
+
+            # Parse template file for a special layout
+            search = Regexp.new("\{\% layout \'(.*)\' \%\}")
+            if search =~ template_code
+              # There seems to be a special layout?
+              layout = $1
+            else
+              layout = 'default.liquid'
+            end
+
+            # Read the layout file
+            layout_file = File.join(Dir.pwd,'layouts',layout)
+            if File.exists?(layout_file)
+              layout_code = IO.read(layout_file)
+            else
+              puts red("Layout file '#{layout_file}' is missing...") 
+              return render_missing(File.join('layouts',layout),'layout')
+            end
+
+            puts green("    using layout '#{layout}'")
+
+            begin
+              snippets = parse_snippets(template_code)
+              snippets = parse_snippets(layout_code,snippets)
+            rescue Exception => e
+              # If there is a snippet missing, we raise an error
+              puts red("Snippet file '#{e.message}' is missing...") 
+              return render_missing(e.message,'snippet')
+            end
+
+            if snippets.any?
+              puts green("    using snippets '#{snippets.keys.join('\', \'')}'")
+            end
           end
         else
-          # First get the template name and necessary subtemplates
-          ##### GET #####
-          path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
-          begin
-            result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get", :extra => params, :client_session => session, :ajax => request.xhr? }))
-            puts result if Nimbu.debug
-            parse_session(result)            
-          rescue Exception => e
-            return e.http_body
-          end
-
-          redirect result["redirect_to"] and return if result["redirect_to"]
-        end
-        
-        if result["template"].nil?
-          raise Sinatra::NotFound
-        end
-
-        template = result["template"].gsub(/buddha$/,'liquid')
-        # Then render everything
-        puts green(" => using template '#{template}'")
-        # Read the template file
-        template_file = File.join(Dir.pwd,'templates',template)
-        if File.exists?(template_file)
-          template_code = IO.read(template_file)
-        else
-          puts red("Layout file '#{template_file}' is missing...") 
-          return render_missing(File.join('templates',template),'template')
-        end
-
-        if template_code=~ /You have an Error in your HAML code/
-          return template_code
-        end
-
-        # Parse template file for a special layout
-        search = Regexp.new("\{\% layout \'(.*)\' \%\}")
-        if search =~ template_code
-          # There seems to be a special layout?
-          layout = $1
-        else
-          layout = 'default.liquid'
-        end
-
-        # Read the layout file
-        layout_file = File.join(Dir.pwd,'layouts',layout)
-        if File.exists?(layout_file)
-          layout_code = IO.read(layout_file)
-        else
-          puts red("Layout file '#{layout_file}' is missing...") 
-          return render_missing(File.join('layouts',layout),'layout')
-        end
-
-        puts green("    using layout '#{layout}'")
-
-        begin
-          snippets = parse_snippets(template_code)
-          snippets = parse_snippets(layout_code,snippets)
-        rescue Exception => e
-          # If there is a snippet missing, we raise an error
-          puts red("Snippet file '#{e.message}' is missing...") 
-          return render_missing(e.message,'snippet')
-        end
-
-        if snippets.any?
-          puts green("    using snippets '#{snippets.keys.join('\', \'')}'")
+          template_file = ""
         end
 
         # Send the templates to the browser
         begin
-          results = json_decode(nimbu.get_request({:path => path, :template => template_code, :layout => layout_code, :snippets => snippets, :extra => params, :method => method, :client_session => session, :ajax => request.xhr? }))
-          puts result if Nimbu.debug
-          parse_session(results)
-          html = results["result"]
-        rescue RestClient::Exception => error
-          html = error.http_body
-        end   
+          params = ({} || params).merge({:simulator => {
+                          :path => path,  
+                          :template => template_code, 
+                          :host => request.host,
+                          :port => request.port,
+                          :layout => layout_code, 
+                          :snippets => snippets, 
+                          :method => method, 
+                          :session => session, 
+                          :headers => request.env.to_json,
+                        }})
+          results = json_decode(nimbu.get_request(params))
+          puts results["status"] if Nimbu.debug
+          puts results["headers"] if Nimbu.debug
+          puts results["body"].try(:length) if Nimbu.debug
 
-        if request.xhr?
-          return results["json"]
-        else
-          return "#{html}"    
-        end
+          status results["status"]
+          headers results["headers"] unless results["headers"] == ""
+          body results["body"]
+        rescue RestClient::Exception => error
+          puts "Error! #{error.http_body}"
+          html = error.http_body
+        end          
       end
 
       error 404 do
@@ -226,19 +261,19 @@ module Nimbu
         Nimbu::Auth.client
       end
 
-      def parse_session(response)
-        if !response["client_session"].nil?
-          response["client_session"].each do |key,value|
-            session[key.to_sym] = value
-            #puts "Session: :#{key} => #{value}" if Nimbu.debug
-          end
-          session.each do |key,value|
-            if !response["client_session"].has_key?(key.to_s)
-              session.delete(key)
-            end
-          end
-        end
-      end
+      # def parse_session(response)
+      #   if !response["session"].nil?
+      #     response["session"].each do |key,value|
+      #       session[key.to_sym] = value
+      #       #puts "Session: :#{key} => #{value}" if Nimbu.debug
+      #     end
+      #     session.each do |key,value|
+      #       if !response["session"].has_key?(key.to_s)
+      #         session.delete(key)
+      #       end
+      #     end
+      #   end
+      # end
 
       def parse_snippets(code, snippets = {})
         # Parse template file for snippets

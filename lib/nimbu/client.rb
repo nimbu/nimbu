@@ -233,7 +233,7 @@ class Nimbu::Client
     uri = URI.parse(given)
     uri.host ||= host.host
     uri.scheme ||= host.scheme || "http"
-    uri.path = "/api/v1" + ((uri.path[0..0] == "/") ? uri.path : "/#{uri.path}")
+    uri.path = "/api/v2" + ((uri.path[0..0] == "/") ? uri.path : "/#{uri.path}")
     uri.port = host.port if full_host =~ /\:\d+/
     uri.to_s
   end

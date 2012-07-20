@@ -19,6 +19,7 @@ class Nimbu::Command::Base
 
     Nimbu.debug = args.include?("--debug")
     Nimbu.development = args.include?("--development") || args.include?("--dev")
+    Nimbu.v2 = args.include?("--v2")
   end
 
   def app
