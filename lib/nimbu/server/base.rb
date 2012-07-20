@@ -192,7 +192,7 @@ module Nimbu
           results = json_decode(nimbu.get_request(params))
           puts results["status"] if Nimbu.debug
           puts results["headers"] if Nimbu.debug
-          puts results["body"].try(:length) if Nimbu.debug
+          puts results["body"].gsub(/\n/,'') if Nimbu.debug
 
           status results["status"]
           headers results["headers"] unless results["headers"] == ""
