@@ -26,4 +26,5 @@ Gem::Specification.new do |s|
   s.add_dependency "haml"
   s.add_dependency "fssm"
   s.add_dependency "thin"
+  s.add_dependency "rack-streaming-proxy"
 end

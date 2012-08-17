@@ -6,6 +6,7 @@ require 'term/ansicolor'
 require "base64"
 require "sinatra/json"
 require 'json'
+require 'rack/streaming_proxy'
 
 module Nimbu
   module Server
@@ -27,6 +28,11 @@ module Nimbu
       
       # Your "actions" go here…
       #
+
+      get '/media/*' do
+        proxy = Rack::StreamingProxy::ProxyRequest.new(request,"http://#{nimbu.host}/media/#{params[:splat].first}")
+        return [proxy.status, proxy.headers, proxy]
+      end
 
       get '/__sinatra__/*' do
         return ""
@@ -198,6 +204,7 @@ module Nimbu
           headers results["headers"] unless results["headers"] == ""
           body results["body"]
         rescue RestClient::Exception => error
+          puts "Error!"
           puts "Error! #{error.http_body}"
           html = error.http_body
         end          
