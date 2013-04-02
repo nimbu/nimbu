@@ -9,17 +9,17 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
   # list available commands or display help for a specific command
   #
   def index
-    themes = json_decode(nimbu.list_themes)
+    themes = nimbu.themes(:subdomain => Nimbu::Auth.site).list
     if themes.any?
-      puts "You have following themes for this website:"
+      display "\nYou have following themes for this website:"
       themes.each do |theme|
-        puts " - #{theme['theme']['name']} (#{theme['theme']['id']})"
+        puts " - #{theme.name.bold} (#{theme.short})"
       end
     else
       puts "Hm. You seem to have no themes. Is that normal?"
     end
     puts ""
-    puts "Currently this directory is configured for '#{Nimbu::Auth.theme}'"
+    puts "Currently this directory is configured for '#{Nimbu::Auth.theme.red.bold}'"
   end
 
   # list
@@ -33,57 +33,34 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     else
       theme = Nimbu::Auth.theme
     end
-    display "Showing layouts, templates and assets for '#{theme}':"
-    contents = json_decode(nimbu.show_theme_contents(theme))
-    contents["layouts"].each do |l|
-      display " - layouts/#{l["name"]}"
-    end unless contents["layouts"].nil?
-    contents["templates"].each do |t|
-      display " - templates/#{t["name"]}"
-    end unless contents["templates"].nil?
-    contents["snippets"].each do |s|
-      display " - snippets/#{s["name"]}"
-    end unless contents["templates"].nil?
-    contents["assets"].each do |a|
-      display " - #{a["folder"]}/#{a["name"]}"
-    end unless contents["assets"].nil?
-  end
-
-  # download
-  #
-  # download all layouts, templates and assets
-  #
-  def download
-    input = args.shift.downcase rescue nil
-    if !input.to_s.strip.empty?
-      theme = input.to_s.strip
-    else
-      theme = Nimbu::Auth.theme
-    end
-    display "Downloading layouts, templates and assets for '#{theme}':"
-    contents = json_decode(nimbu.show_theme_contents(theme))
-    contents["layouts"].each do |asset|
-      print " - layouts/#{asset["name"]}"
-      data = json_decode(nimbu.fetch_theme_layout(theme,asset["id"]))
-      filename = File.join(Dir.pwd,"layouts",asset["name"])
-      FileUtils.mkdir_p(File.dirname(filename))
-      File.open(filename, 'w') do |file| 
-        file.puts(data["code"])
+    display "\nShowing layouts, templates, snippets and assets for '#{theme.red.bold}':"
+    contents = nimbu.themes(:subdomain => Nimbu::Auth.site).get(theme)
+    if contents["layouts"].any?
+      display "\nLayouts:".bold
+      contents["layouts"].each do |l|
+        display " - layouts/#{l["name"]}"
       end
-
-      print " (ok)\n"
     end
 
-    contents["templates"].each do |asset|
-      print " - templates/#{asset["name"]}"
-      data = json_decode(nimbu.fetch_theme_template(theme,asset["id"]))
-      filename = File.join(Dir.pwd,"templates",asset["name"])
-      FileUtils.mkdir_p(File.dirname(filename))
-      File.open(filename, 'w') do |file| 
-        file.puts(data["code"])
+    if contents["templates"].any?
+      display "\nTemplates:".bold
+      contents["templates"].each do |t|
+        display " - templates/#{t["name"]}"
       end
+    end
 
-      print " (ok)\n"
+    if contents["snippets"].any?
+      display "\nSnippets:".bold
+      contents["snippets"].each do |s|
+        display " - snippets/#{s["name"]}"
+      end
+    end
+
+    if contents["assets"].any?
+      display "\nAssets:".bold
+      contents["assets"].each do |a|
+        display " - #{a["folder"]}/#{a["name"]}"
+      end
     end
   end
 
@@ -103,7 +80,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     # end
     theme = Nimbu::Auth.theme
     display "Pushing layouts, templates and assets for '#{theme}' to the server:"
-    
+
     layouts_glob = Dir.glob("#{Dir.pwd}/layouts/**/*.liquid")
     layouts_files = layouts_glob.map {|dir| dir.gsub("#{Dir.pwd}/layouts/","")}
     templates_glob = Dir.glob("#{Dir.pwd}/templates/**/*.liquid")
@@ -119,7 +96,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         print " - layouts/#{layout}"
         nimbu.upload_layout(theme, layout, IO.read(file))
         print " (ok)\n"
-      end      
+      end
 
       print "\nTemplates:\n"
       templates_files.each do |template|
@@ -181,7 +158,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     end
   end
 
-  private 
+  private
 
   def anyFileWithWord?(glob,word)
     found = false

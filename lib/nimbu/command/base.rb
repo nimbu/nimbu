@@ -1,6 +1,5 @@
 require "fileutils"
 require "nimbu/auth"
-require "nimbu/client/rendezvous"
 require "nimbu/command"
 
 class Nimbu::Command::Base
@@ -16,27 +15,7 @@ class Nimbu::Command::Base
   def initialize(args=[], options={})
     @args = args
     @options = options
-
-    Nimbu.debug = args.include?("--debug")
-    Nimbu.development = args.include?("--development") || args.include?("--dev")
-    Nimbu.v2 = args.include?("--v2")
   end
-
-  def app
-    @app ||= if options[:app].is_a?(String)
-      if confirm_mismatch?
-        raise Nimbu::Command::CommandFailed, "Mismatch between --app and --confirm"
-      end
-      options[:app]
-    elsif options[:confirm].is_a?(String)
-      options[:confirm]
-    elsif app_from_dir = extract_app_in_dir(Dir.pwd)
-      app_from_dir
-    else
-      raise Nimbu::Command::CommandFailed, "No app specified.\nRun this command from an app folder or specify which app to use with --app <app name>"
-    end
-  end
-
 
   def nimbu
     Nimbu::Auth.client
@@ -45,14 +24,14 @@ class Nimbu::Command::Base
 protected
 
   def self.inherited(klass)
-    return if klass == Nimbu::Command::Base
+    unless klass == Nimbu::Command::Base
+      help = extract_help_from_caller(caller.first)
 
-    help = extract_help_from_caller(caller.first)
-
-    Nimbu::Command.register_namespace(
-      :name => klass.namespace,
-      :description => help.split("\n").first
-    )
+      Nimbu::Command.register_namespace(
+        :name => klass.namespace,
+        :description => help.first
+      )
+    end
   end
 
   def self.method_added(method)
@@ -64,20 +43,17 @@ protected
     resolved_method = (method.to_s == "index") ? nil : method.to_s
     command = [ self.namespace, resolved_method ].compact.join(":")
     banner = extract_banner(help) || command
-    permute = !banner.index("*")
-    banner.gsub!("*", "")
 
     Nimbu::Command.register_command(
       :klass       => self,
       :method      => method,
       :namespace   => self.namespace,
       :command     => command,
-      :banner      => banner,
-      :help        => help,
+      :banner      => banner.strip,
+      :help        => help.join("\n"),
       :summary     => extract_summary(help),
       :description => extract_description(help),
-      :options     => extract_options(help),
-      :permute     => permute
+      :options     => extract_options(help)
     )
   end
 
@@ -91,19 +67,6 @@ protected
     app
   end
 
-  #
-  # Parse the caller format and identify the file and line number as identified
-  # in : http://www.ruby-doc.org/core/classes/Kernel.html#M001397.  This will
-  # look for a colon followed by a digit as the delimiter.  The biggest
-  # complication is windows paths, which have a color after the drive letter.
-  # This regex will match paths as anything from the beginning to a colon
-  # directly followed by a number (the line number).
-  #
-  # Examples of the caller format :
-  # * c:/Ruby192/lib/.../lib/nimbu/command/addons.rb:8:in `<module:Command>'
-  # * c:/Ruby192/lib/.../nimbu-2.0.1/lib/nimbu/command/pg.rb:96:in `<class:Pg>'
-  # * /Users/ph7/...../xray-1.1/lib/xray/thread_dump_signal_handler.rb:9
-  #
   def self.extract_help_from_caller(line)
     # pull out of the caller the information for the file path and line number
     if line =~ /^(.+?):(\d+)/
@@ -112,50 +75,46 @@ protected
     raise "unable to extract help from caller: #{line}"
   end
 
-  def self.extract_help(file, line)
+  def self.extract_help(file, line_number)
     buffer = []
-    lines  = File.read(file).split("\n")
+    lines = Nimbu::Command.files[file]
 
-    catch(:done) do
-      (line.to_i-2).downto(0) do |i|
-        case lines[i].strip[0..0]
-          when "", "#" then buffer << lines[i]
-          else throw(:done)
-        end
+    (line_number.to_i-2).downto(0) do |i|
+      line = lines[i]
+      case line[0..0]
+        when ""
+        when "#"
+          buffer.unshift(line[1..-1])
+        else
+          break
       end
     end
 
-    buffer.map! do |line|
-      line.strip.gsub(/^#/, "")
-    end
-
-    buffer.reverse.join("\n").strip
+    buffer
   end
 
   def self.extract_banner(help)
-    help.split("\n").first
+    help.first
   end
 
   def self.extract_summary(help)
-    extract_description(help).split("\n").first
+    extract_description(help).split("\n")[2].to_s.split("\n").first
   end
 
   def self.extract_description(help)
-    lines = help.split("\n").map { |l| l.strip }
-    lines.shift
-    lines.reject do |line|
-      line =~ /^-(.+)#(.+)/
-    end.join("\n").strip
+    help.reject do |line|
+      line =~ /^\s+-(.+)#(.+)/
+    end.join("\n")
   end
 
   def self.extract_options(help)
-    help.split("\n").map { |l| l.strip }.select do |line|
-      line =~ /^-(.+)#(.+)/
-    end.inject({}) do |hash, line|
-      description = line.split("#", 2).last.strip
-      long  = line.match(/--([A-Za-z\- ]+)/)[1].strip
-      short = line.match(/-([A-Za-z ])/)[1].strip
-      hash.update(long.split(" ").first => { :desc => description, :short => short, :long => long })
+    help.select do |line|
+      line =~ /^\s+-(.+)#(.+)/
+    end.inject([]) do |options, line|
+      args = line.split('#', 2).first
+      args = args.split(/,\s*/).map {|arg| arg.strip}.sort.reverse
+      name = args.last.split(' ', 2).first[2..-1]
+      options << { :name => name, :args => args }
     end
   end
 

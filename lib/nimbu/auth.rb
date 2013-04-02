@@ -1,6 +1,5 @@
 require "yaml"
 require "nimbu"
-require "nimbu/client"
 require "nimbu/helpers"
 
 class Nimbu::Auth
@@ -12,9 +11,7 @@ class Nimbu::Auth
 
     def client
       @client ||= begin
-        client = Nimbu::Client.new(user, password, host)
-        client.on_warning { |msg| self.display("\n#{msg}\n\n") }
-        client
+        Nimbu::Client.new(:oauth_token => token, :endpoint => host)
       end
     end
 
@@ -29,34 +26,38 @@ class Nimbu::Auth
 
     # just a stub; will raise if not authenticated
     def check
-      client.list
-    end
-
-    def default_host
-      "getnimbu.com"
+      client.sites.list
     end
 
     def host
-      @host ||= ENV['NIMBU_HOST'] || get_nimbu_host
+      ENV['NIMBU_HOST'] || "https://api.nimbu.io"
+    end
+
+    def default_host
+      "https://api.nimbu.io"
+    end
+
+    def admin_host
+      @admin_host ||= host.gsub(/https?\:\/\/api\./,'')
+    end
+
+    def site
+      @site ||= ENV['NIMBU_SITE'] || get_nimbu_site
     end
 
     def theme
       @theme ||= ENV['NIMBU_THEME'] || get_nimbu_theme
     end
 
-    def get_nimbu_host
-      if Nimbu.development
-        get_configuration[:development]
-      else
-        get_configuration[:hostname]
-      end
+    def get_nimbu_site
+      get_configuration["site"]
     end
 
     def get_nimbu_theme
-      get_configuration[:theme] || "default-theme"
+      get_configuration["theme"] || "default-theme"
     end
 
-    def get_configuration    # :nodoc:
+    def get_configuration
       @configuration ||= (read_configuration || ask_for_and_save_configuration)
     end
 
@@ -75,20 +76,75 @@ class Nimbu::Auth
       @host = nil
     end
 
-   def ask_for_configuration
-      puts "What is the hostname for this Nimbu site?"
-      print "Hostname: "
-      hostname = ask
+    def ask_for_configuration
 
-      puts "What is the theme you are developing in this directory?"
-      print "Theme (i.e. default): "
-      theme = ask
+      subdomain = nil
+      sites = client.sites.list
 
-      {:hostname => hostname, :theme => theme}
+      unless sites.respond_to?(:any?) && sites.any?
+        display "You don't have access to any Nimbu sites you can edit yet..."
+        display ""
+        display "Please visit http://nimbu.io, start your 30-day trial and discover our amazing platform!"
+        exit(1)
+      else
+        print_separator
+        display "\nLet's first setup the configuration for this directory..."
+        display "\nYou have access to following sites:\n"
+        sites.each_with_index do |site,i|
+          display " #{i+1}) #{site.name.white.bold} => http://#{site.domain}"
+        end
+        site_number = 0
+        retry_site = false
+        while site_number < 1 || site_number > sites.length
+          unless retry_site
+            print "\nOn which site would you like to work? "
+          else
+            print "\nPlease enter the number of your site (between 1-#{sites.length}): "
+          end
+          site_number_string = ask
+          site_number = site_number_string.to_i rescue 0
+          retry_site = true
+        end
+        puts ""
+        site = sites[site_number-1]
+        display "Site chosen => #{site.name.white.bold} (http://#{site.domain})"
+        subdomain = site.subdomain
+        @site = subdomain
+      end
+
+      themes = client.themes(:subdomain => subdomain).list
+      current_theme = if themes.length > 1
+        theme_number = 0
+        retry_theme = false
+        while theme_number < 1 || theme_number > themes.length
+          unless retry_theme
+            print "\nOn which theme would you like to work in this directory? "
+          else
+            print "\nPlease enter the number of your theme (between 1-#{themes.length}): "
+          end
+          theme_number_string = ask
+          theme_number = theme_number_string.to_i rescue 0
+          retry_theme = true
+        end
+        puts ""
+        display "Theme chosen => #{themes[theme_number-1].name}"
+        themes[theme_number-1]
+      else
+        themes.first
+      end
+      @theme = current_theme.short
+      print_separator
+
+      { "site" => subdomain, "theme" => current_theme.short }
     end
 
     def read_configuration
-      File.exists?(configuration_file) and YAML::load(File.open( configuration_file ))
+      existing_config = YAML::load(File.open( configuration_file )) if File.exists?(configuration_file)
+      if existing_config && ! existing_config["site"].nil?
+        existing_config
+      else
+        nil
+      end
     end
 
     def write_configuration
@@ -102,23 +158,15 @@ class Nimbu::Auth
       @credentials = ask_for_and_save_credentials
     end
 
-    def user    # :nodoc:
-      get_credentials[0]
-    end
-
-    def password    # :nodoc:
-      get_credentials[1]
-    end
-
-    def api_key
-      Nimbu::Client.auth(user, password)["api_key"]
+    def token    # :nodoc:
+      get_credentials
     end
 
     def credentials_file
       if host == default_host
         "#{home_directory}/.nimbu/credentials"
       else
-        "#{home_directory}/.nimbu/credentials.#{CGI.escape(host)}"
+        "#{home_directory}/.nimbu/credentials.#{CGI.escape(host.gsub(/https?\:\/\//,''))}"
       end
     end
 
@@ -132,16 +180,17 @@ class Nimbu::Auth
     end
 
     def read_credentials
-      if ENV['NIMBU_API_KEY']
-        ['', ENV['NIMBU_API_KEY']]
+      credentials = File.read(credentials_file) if File.exists?(credentials_file)
+      if credentials && credentials =~ /^(bearer|oauth2|token) ([\w]+)$/i
+        $2
       else
-        File.exists?(credentials_file) and File.read(credentials_file).split("\n")
+        nil
       end
     end
 
     def write_credentials
       FileUtils.mkdir_p(File.dirname(credentials_file))
-      File.open(credentials_file, 'w') {|credentials| credentials.puts(self.credentials)}
+      File.open(credentials_file, 'w') {|credentials| credentials.print("token #{self.credentials}")}
       FileUtils.chmod(0700, File.dirname(credentials_file))
       FileUtils.chmod(0600, credentials_file)
     end
@@ -159,16 +208,22 @@ class Nimbu::Auth
     end
 
     def ask_for_credentials
-      puts "Enter your Nimbu credentials."
-
-      print "Email: "
+      puts " Please enter your Nimbu credentials:\n"
+      print "Login: "
       user = ask
 
       print "Password: "
       password = running_on_windows? ? ask_for_password_on_windows : ask_for_password
-      api_key = Nimbu::Client.auth(user, password)['api_key']
 
-      [user, api_key]
+      begin
+        oauth = Nimbu::Client.new(:basic_auth => "#{user}:#{password}", :endpoint => host).authenticate
+        oauth.token
+      rescue Exception => e
+        if e.respond_to?(:http_status_code) && e.http_status_code == 401
+          display " => could not login... please check your username and/or password!\n\n"
+        end
+        nil
+      end
     end
 
     def ask_for_password_on_windows
@@ -202,6 +257,7 @@ class Nimbu::Auth
     end
 
     def ask_for_and_save_credentials
+      display "Please authenticate with Nimbu.io:"
       begin
         @credentials = ask_for_credentials
         write_credentials
@@ -218,55 +274,16 @@ class Nimbu::Auth
       @credentials
     end
 
-    def check_for_associated_ssh_key
-      return unless client.keys.empty?
-      associate_or_generate_ssh_key
-    end
-
-    def associate_or_generate_ssh_key
-      public_keys = Dir.glob("#{home_directory}/.ssh/*.pub").sort
-
-      case public_keys.length
-      when 0 then
-        display "Could not find an existing public key."
-        display "Would you like to generate one? [Yn] ", false
-        unless ask.strip.downcase == "n"
-          display "Generating new SSH public key."
-          generate_ssh_key("id_rsa")
-          associate_key("#{home_directory}/.ssh/id_rsa.pub")
-        end
-      when 1 then
-        display "Found existing public key: #{public_keys.first}"
-        associate_key(public_keys.first)
-      else
-        display "Found the following SSH public keys:"
-        public_keys.each_with_index do |key, index|
-          display "#{index+1}) #{File.basename(key)}"
-        end
-        display "Which would you like to use with your Nimbu account? ", false
-        chosen = public_keys[ask.to_i-1] rescue error("Invalid choice")
-        associate_key(chosen)
-      end
-    end
-
-    def generate_ssh_key(keyfile)
-      ssh_dir = File.join(home_directory, ".ssh")
-      unless File.exists?(ssh_dir)
-        FileUtils.mkdir_p ssh_dir
-        File.chmod(0700, ssh_dir)
-      end
-      `ssh-keygen -t rsa -N "" -f \"#{home_directory}/.ssh/#{keyfile}\" 2>&1`
-    end
-
-    def associate_key(key)
-      display "Uploading SSH public key #{key}"
-      client.add_key(File.read(key))
-    end
-
     def retry_login?
       @login_attempts ||= 0
       @login_attempts += 1
       @login_attempts < 3
+    end
+
+    def print_separator
+      print "\n"
+      60.times { print "#"}
+      print "\n"
     end
   end
 end

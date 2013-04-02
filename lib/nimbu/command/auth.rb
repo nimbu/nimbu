@@ -8,9 +8,20 @@ class Nimbu::Command::Auth < Nimbu::Command::Base
   #
   # log in with your nimbu credentials
   #
+  #Example:
+  #
+  # $ nimbu auth:login
+  #
+  # Please enter your Nimbu credentials:
+  #
+  # Login: email@example.com (or your Nimbu username)
+  # Password (typing will be hidden)
+  #
+  # Authentication successful.
+  #
   def login
     Nimbu::Auth.login
-    display "Authentication successful."
+    display " => Authentication successful."
   end
 
   alias_command "login", "auth:login"
@@ -21,7 +32,7 @@ class Nimbu::Command::Auth < Nimbu::Command::Base
   #
   def logout
     Nimbu::Auth.logout
-    display "Local credentials cleared."
+    display "=> Local credentials cleared."
   end
 
   alias_command "logout", "auth:logout"
@@ -31,7 +42,7 @@ class Nimbu::Command::Auth < Nimbu::Command::Base
   # display your api token
   #
   def token
-    display Nimbu::Auth.api_key
+    display "=> Your personal API token is: #{Nimbu::Auth.token}"
   end
 
 end

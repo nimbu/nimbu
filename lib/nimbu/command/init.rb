@@ -1,24 +1,23 @@
 require "nimbu/command/base"
 require 'term/ansicolor'
 
-# authentication (login, logout)
+# working directory initialization
 #
 class Nimbu::Command::Init < Nimbu::Command::Base
   include Term::ANSIColor
 
   # index
   #
-  # log in with your nimbu credentials
+  # initialize your working directory to code a selected theme
   #
   def index
     if Nimbu::Auth.read_configuration && Nimbu::Auth.read_credentials
       print green(bold("CONGRATULATIONS!")), ": this directory is already configured as a Nimbu theme."
     else
-      display "Initialize the Nimbu configuration file."
-      config = Nimbu::Auth.get_configuration
+      credentials = Nimbu::Auth.get_credentials
 
-      display "Configuration ready: #{config}"
-      config = Nimbu::Auth.get_credentials
+      display "Initializing the Nimbu configuration file."
+      config = Nimbu::Auth.get_configuration
 
       display "Initializing directories:"
       display " - layouts"

@@ -4,7 +4,7 @@ require "nimbu/command/base"
 #
 class Nimbu::Command::Help < Nimbu::Command::Base
 
-  PRIMARY_NAMESPACES = %w( auth server themes )
+  PRIMARY_NAMESPACES = %w( auth server themes sites init browse )
 
   # help [COMMAND]
   #

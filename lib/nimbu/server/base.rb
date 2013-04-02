@@ -22,10 +22,10 @@ module Nimbu
       set :method_override, true
       set :static, true                             # set up static file routing
       set :public_folder, Dir.pwd # set up the static dir (with images/js/css inside)
-      
+
       set :views,  File.expand_path('../views', __FILE__) # set up the views dir
       set :haml, { :format => :html5 }                    # if you use haml
-      
+
       # Your "actions" go here…
       #
 
@@ -57,7 +57,7 @@ module Nimbu
           if request.get? then "get"
           elsif request.post? then "post"
           elsif request.put? then "put"
-          elsif request.delete? then "delete"  
+          elsif request.delete? then "delete"
           end
         )
         puts green("#{method.upcase} #{request.fullpath}")
@@ -95,7 +95,7 @@ module Nimbu
         #   begin
         #     result = json_decode(nimbu.get_template({:path => path, :extra => params, :method => "get", :extra => params, :client_session => session, :ajax => request.xhr? }))
         #     puts result if Nimbu.debug
-        #     parse_session(result)            
+        #     parse_session(result)
         #   rescue Exception => e
         #     return e.http_body
         #   end
@@ -109,12 +109,12 @@ module Nimbu
             params = ({} || params).merge({:simulator => {
                             :host => request.host,
                             :port => request.port,
-                            :path => path,  
-                            :method => method, 
-                            :session => session, 
+                            :path => path,
+                            :method => method,
+                            :session => session,
                             :headers => request.env.to_json,
                           }})
-            result = json_decode(nimbu.get_template(params))
+            result = nimbu.simulator(:subdomain => Nimbu::Auth.site).recipe(params)
             puts result if Nimbu.debug
           rescue Exception => e
             if e.respond_to?(:http_body)
@@ -123,7 +123,7 @@ module Nimbu
               raise e
             end
           end
-      
+
           if result["template"].nil?
             raise Sinatra::NotFound
           end
@@ -134,10 +134,15 @@ module Nimbu
             puts green(" => using template '#{template}'")
             # Read the template file
             template_file = File.join(Dir.pwd,'templates',template)
+            template_file_haml = File.join(Dir.pwd,'templates',"#{template}.haml")
+
             if File.exists?(template_file)
               template_code = IO.read(template_file)
+            elsif File.exists?(template_file_haml)
+              template_code = IO.read(template_file_haml)
+              template = "#{template}.haml"
             else
-              puts red("Layout file '#{template_file}' is missing...") 
+              puts red("Layout file '#{template_file}' is missing...")
               return render_missing(File.join('templates',template),'template')
             end
 
@@ -156,10 +161,15 @@ module Nimbu
 
             # Read the layout file
             layout_file = File.join(Dir.pwd,'layouts',layout)
+            layout_file_haml = File.join(Dir.pwd,'layouts',"#{layout}.haml")
+
             if File.exists?(layout_file)
               layout_code = IO.read(layout_file)
+            elsif File.exists?(layout_file_haml)
+              layout = "#{layout}.haml"
+              layout_code = IO.read(layout_file_haml)
             else
-              puts red("Layout file '#{layout_file}' is missing...") 
+              puts red("Layout file '#{layout_file}' is missing...")
               return render_missing(File.join('layouts',layout),'layout')
             end
 
@@ -170,7 +180,7 @@ module Nimbu
               snippets = parse_snippets(layout_code,snippets)
             rescue Exception => e
               # If there is a snippet missing, we raise an error
-              puts red("Snippet file '#{e.message}' is missing...") 
+              puts red("Snippet file '#{e.message}' is missing...")
               return render_missing(e.message,'snippet')
             end
 
@@ -185,29 +195,35 @@ module Nimbu
         # Send the templates to the browser
         begin
           params = ({} || params).merge({:simulator => {
-                          :path => path,  
-                          :template => template_code, 
-                          :host => request.host,
-                          :port => request.port,
-                          :layout => layout_code, 
-                          :snippets => snippets, 
-                          :method => method, 
-                          :session => session, 
-                          :headers => request.env.to_json,
+                          :path => path,
+                          :code => {
+                            :template_name => template,
+                            :template => template_code,
+                            :layout_name => layout,
+                            :layout => layout_code,
+                            :snippets => snippets,
+                          },
+                          :request => {
+                            :host => request.host,
+                            :port => request.port,
+                            :method => method,
+                            :session => session,
+                            :headers => request.env.to_json
+                          }
                         }})
-          results = json_decode(nimbu.get_request(params))
+          results = nimbu.simulator(:subdomain => Nimbu::Auth.site).render(params)
           puts results["status"] if Nimbu.debug
           puts results["headers"] if Nimbu.debug
-          puts results["body"].gsub(/\n/,'') if Nimbu.debug
+          puts Base64.decode64(results["body"]).gsub(/\n/,'') if Nimbu.debug
 
           status results["status"]
           headers results["headers"] unless results["headers"] == ""
-          body results["body"]
+          body Base64.decode64(results["body"])
         rescue RestClient::Exception => error
           puts "Error!"
           puts "Error! #{error.http_body}"
           html = error.http_body
-        end          
+        end
       end
 
       error 404 do
@@ -263,24 +279,10 @@ module Nimbu
       rescue Nimbu::OkJson::ParserError
         nil
       end
-      
+
       def nimbu
         Nimbu::Auth.client
       end
-
-      # def parse_session(response)
-      #   if !response["session"].nil?
-      #     response["session"].each do |key,value|
-      #       session[key.to_sym] = value
-      #       #puts "Session: :#{key} => #{value}" if Nimbu.debug
-      #     end
-      #     session.each do |key,value|
-      #       if !response["session"].has_key?(key.to_s)
-      #         session.delete(key)
-      #       end
-      #     end
-      #   end
-      # end
 
       def parse_snippets(code, snippets = {})
         # Parse template file for snippets
@@ -295,9 +297,15 @@ module Nimbu
             end
             # Read the snippet file
             snippet_file = File.join(Dir.pwd,'snippets',snippet_name)
+            snippet_file_haml = File.join(Dir.pwd,'snippets',"#{snippet_name}.haml")
+
             if File.exists?(snippet_file)
               snippet_code = IO.read(snippet_file)
               snippets[snippet_name.to_sym] = snippet_code
+              self.parse_snippets(snippet_code, snippets)
+            elsif File.exists?(snippet_file_haml)
+              snippet_code = IO.read(snippet_file_haml)
+              snippets["#{snippet_name}.haml".to_sym] = snippet_code
               self.parse_snippets(snippet_code, snippets)
             else
               raise "#{snippet_file}"

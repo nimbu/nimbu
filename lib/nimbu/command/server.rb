@@ -1,8 +1,6 @@
 require "nimbu/command/base"
 require "nimbu/server/base"
 require 'term/ansicolor'
-require 'compass'
-require 'compass/exec'
 require 'thin'
 
 # running a local server to speed up designing Nimbu themes
@@ -11,124 +9,190 @@ class Nimbu::Command::Server < Nimbu::Command::Base
   include Term::ANSIColor
   # server
   #
-  # list available commands or display help for a specific command
+  # starts a local development server, using the data from the Nimbu cloud in real time.
+  #
+  # -p PORT, --port PORT      # set the port on which to start the http server
+  # -h,  --haml           # start local HAML watcher
+  # -c,  --compass        # start local Compass watcher
+  # -d,  --debug          # enable debugging output
   #
   def index
     # Check if config file is present?
     if !Nimbu::Auth.read_configuration || !Nimbu::Auth.read_credentials
       print red(bold("ERROR")), ": this directory does not seem to contain any Nimbu theme or your credentials are not set. \n ==> Run \"", bold { "nimbu init"}, "\" to initialize this directory."
     else
-      no_haml = args.include?("--no-haml")
-      no_compass = args.include?("--no-compass")
+      no_compilation = true #! options[:'no-compile']
+      with_haml = options[:haml]
+      with_compass = options[:compass]
 
-      if !(File.exists?(File.join(Dir.pwd,'haml')) && File.directory?(File.join(Dir.pwd,'haml')))
-          no_haml = true
-          puts red("\n !! WARNING: no ./haml directory detected => starting without HAML support !!")
+      if with_compass
+        require 'compass'
+        require 'compass/exec'
       end
 
-      puts white("\nStarting up Nimbu Server" + (no_compass ? "" : " + Compass Watcher") + (no_haml ? "" : " + HAML Compiler") + "...")
-      puts green(
-            "\n             _   ___            __         \n" +
-            "            / | / (_)____ ___  / /_  __  __\n" +
-            "           /  |/ / // __ `__ \\/ __ \\/ / / /\n" +
-            "          / /|  / // / / / / / /_/ / /_/ / \n" +
-            "         /_/ |_/_//_/ /_/ /_/_.___/\\__,_/  \n")
+      if with_haml
+        require 'haml'
+      end
 
-      puts green("\nConnnected to '#{Nimbu::Auth.host}', using '#{Nimbu::Auth.theme}' theme.\n")
+      services = []
+      services << "HAML" if with_haml
+      services << "Compass" if with_compass
+      title = "Starting up Nimbu Server"
+      title << "(with local #{services.join(' and ')} watcher)" if with_compass || with_haml
+      title << "..."
+      puts white("\n#{title}")
+      puts green(nimbu_header)
+      puts green("\nConnnected to '#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}', using '#{Nimbu::Auth.theme}' theme#{Nimbu.debug ? ' (in debug mode)'.red : nil}.\n")
 
-      rd1, wr1 = IO::pipe
-      rd2, wr2 = IO::pipe
-      rd3, wr3 = IO::pipe
+      server_read, server_write = IO::pipe
+      haml_read, haml_write = IO::pipe
+      compass_read, compass_write = IO::pipe
+      compiler_read, compiler_write = IO::pipe
 
       server_pid = Process.fork do
-        $stdout.reopen(wr1)
-        rd1.close
-        puts "Starting..."
-        options = {
-          :Port               => 4567,
+        $stdout.reopen(server_write)
+        server_read.close
+        puts "Starting server..."
+        server_options = {
+          :Port               => options[:port] || 4567,
           :DocumentRoot       => Dir.pwd
         }
-        Rack::Handler::Thin.run Nimbu::Server::Base, options  do |server|
+        Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
           [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
         end
       end
 
+      # assets_pid = Process.fork do
+      #   $stdout.reopen(compiler_write)
+      #   compiler_read.close
+      #   puts "Starting watcher..."
+      #   HamlWatcher.watch
+      # end unless no_compilation
+
       haml_pid = Process.fork do
-        $stdout.reopen(wr2)
-        rd2.close
+        $stdout.reopen(haml_write)
+        haml_read.close
         puts "Starting..."
-        HamlWatcher.watch
-      end unless no_haml
+        haml_listener = HamlWatcher.watch
+        [:INT, :TERM].each do |sig|
+          Signal.trap(sig) do
+            puts green("== Stopping HAML watcher\n")
+            haml_listener.stop
+            puts haml_listener
+          end
+        end
+        Process.waitall
+      end if with_haml
 
       compass_pid = Process.fork do
-        $stdout.reopen(wr3)
-        rd3.close
+        $stdout.reopen(compass_write)
+        compass_read.close
         puts "Starting..."
         Compass::Exec::SubCommandUI.new(["watch","."]).run!
-      end unless no_compass
-
+      end if with_compass
 
       watch_server_pid = Process.fork do
         trap('INT') { exit }
-        wr1.close
-        rd1.each do |line|  
+        server_write.close
+        server_read.each do |line|
           print cyan("SERVER:  ") + white(line) + ""
         end
       end
+
+      # watch_assets_pid = Process.fork do
+      #   trap('INT') { exit }
+      #   compiler_write.close
+      #   compiler_read.each do |line|
+      #     print magenta("ASSETS:    ") + white(line) + ""
+      #   end
+      # end unless no_compilation
+
       watch_haml_pid = Process.fork do
         trap('INT') { exit }
-        wr2.close
-        rd2.each do |line|  
+        haml_write.close
+        haml_read.each do |line|
           print magenta("HAML:    ") + white(line) + ""
         end
-      end unless no_haml
+      end if with_haml
 
       watch_compass_pid = Process.fork do
         trap('INT') { exit }
-        wr3.close
-        rd3.each do |line|  
+        compass_write.close
+        compass_read.each do |line|
           print yellow("COMPASS: ") + white(line) + ""
         end
-      end unless no_compass
+      end if with_compass
 
-      [:INT, :TERM].each do |sig| 
+      [:INT, :TERM].each do |sig|
         trap(sig) do
           puts yellow("\n== Waiting for all processes to finish...")
+          Process.kill('INT', haml_pid) if haml_pid && running?(haml_pid)
           Process.waitall
           puts green("== Nimbu has ended its work " + bold("(crowd applauds!)\n"))
         end
       end
 
-      Process.waitall      
+      Process.waitall
+    end
+  end
+
+  protected
+
+  def nimbu_header
+    h = ""
+    h << "\n             o8o                     .o8"
+    h << "\n             `\"'                    \"888"
+    h << "\nooo. .oo.   oooo  ooo. .oo.  .oo.    888oooo.  oooo  oooo"
+    h << "\n`888P\"Y88b  `888  `888P\"Y88bP\"Y88b   d88' `88b `888  `888"
+    h << "\n 888   888   888   888   888   888   888   888  888   888"
+    h << "\n 888   888   888   888   888   888   888   888  888   888"
+    h << "\no888o o888o o888o o888o o888o o888o  `Y8bod8P'  `V88V\"V8P'"
+  end
+
+  def running?(pid)
+    begin
+      Process.getpgid( pid )
+      true
+    rescue Errno::ESRCH
+      false
     end
   end
 end
 
 require 'rubygems'
-require 'fssm'
+require 'listen'
 require 'haml'
 
 class HamlWatcher
   class << self
     include Term::ANSIColor
-    
+
     def watch
       refresh
       puts ">>> Haml is polling for changes. Press Ctrl-C to Stop."
-      FSSM.monitor('haml', '**/*.haml') do
-        update do |base, relative|
+      listener = Listen.to('haml')
+      listener.relative_paths(true)
+      listener.filter(/\.haml$/)
+      modifier = lambda do |modified, added, removed|
+        puts modified.inspect
+        modified.each do |relative|
           puts ">>> Change detected to: #{relative}"
           HamlWatcher.compile(relative)
-        end
-        create do |base, relative|
+        end if modified
+
+        added.each do |relative|
           puts ">>> File created: #{relative}"
           HamlWatcher.compile(relative)
-        end
-        delete do |base, relative|
+        end if added
+
+        removed.each do |relative|
           puts ">>> File deleted: #{relative}"
           HamlWatcher.remove(relative)
-        end
+        end if removed
       end
+      listener.change(&modifier)
+      listener.start(false)
+      listener
     end
 
     def output_file(filename)
@@ -153,7 +217,7 @@ class HamlWatcher
         puts "\033[0;#{color}m#{action}\033[0m #{output_file_name}"
         FileUtils.mkdir_p(File.dirname(output_file_name))
         File.open(output_file_name,'w') {|f| f.write(result)}
-      rescue Exception => e 
+      rescue Exception => e
         print red("#{plainError e, file}\n")
         output_file_name = output_file(file)
         result = goHere(e, file)
@@ -194,7 +258,7 @@ class HamlWatcher
       return (exception.message.scan(/:(\d+)/).first || ["??"]).first if exception.is_a?(::SyntaxError)
       (exception.backtrace[0].scan(/:(\d+)/).first || ["??"]).first
     end
-    
+
     def plainError(message, nameoffile)
       @plainMessage = ""
       @plainMessage += "Error: #{message} \n"
@@ -202,7 +266,7 @@ class HamlWatcher
       @plainMessage += "File error detected: #{nameoffile}"
       return @plainMessage
     end
-    
+
     def sassErrorLine message
       return message
     end
