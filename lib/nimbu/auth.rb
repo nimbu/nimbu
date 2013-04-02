@@ -208,7 +208,6 @@ class Nimbu::Auth
     end
 
     def ask_for_credentials
-      puts " Please enter your Nimbu credentials:\n"
       print "Login: "
       user = ask
 
@@ -262,11 +261,6 @@ class Nimbu::Auth
         @credentials = ask_for_credentials
         write_credentials
         check
-      rescue ::RestClient::Unauthorized, ::RestClient::ResourceNotFound => e
-        delete_credentials
-        display "Authentication failed."
-        retry if retry_login?
-        exit 1
       rescue Exception => e
         delete_credentials
         raise e

@@ -4,6 +4,13 @@ require "nimbu/command/base"
 #
 class Nimbu::Command::Auth < Nimbu::Command::Base
 
+  # auth
+  #
+  # Authenticate, display token and current user
+  def index
+    Nimbu::Command::Help.new.send(:help_for_command, current_command)
+  end
+
   # auth:login
   #
   # log in with your nimbu credentials

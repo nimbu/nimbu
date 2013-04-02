@@ -261,10 +261,12 @@ module Nimbu
       display(format_with_bang(message), new_line)
     end
 
-    def error_with_failure(message)
-      display "failed"
-      output_with_bang(message)
-      exit 1
+    def self.error_with_failure
+      @@error_with_failure ||= false
+    end
+
+    def self.error_with_failure=(new_error_with_failure)
+      @@error_with_failure = new_error_with_failure
     end
 
     def self.included_into

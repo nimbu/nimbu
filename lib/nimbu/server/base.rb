@@ -219,7 +219,7 @@ module Nimbu
           status results["status"]
           headers results["headers"] unless results["headers"] == ""
           body Base64.decode64(results["body"])
-        rescue RestClient::Exception => error
+        rescue Exception => error
           puts "Error!"
           puts "Error! #{error.http_body}"
           html = error.http_body

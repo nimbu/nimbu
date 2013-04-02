@@ -129,6 +129,10 @@ protected
     options[:confirm] && (options[:confirm] != options[:app])
   end
 
+  def current_command
+    Nimbu::Command.current_command
+  end
+
   def extract_app_in_dir(dir)
     return unless remotes = git_remotes(dir)
 

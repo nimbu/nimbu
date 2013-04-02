@@ -2,6 +2,9 @@ require "vendor/nimbu/okjson"
 
 module Nimbu
   module Helpers
+
+    extend self
+
     def home_directory
       running_on_windows? ? ENV['USERPROFILE'].gsub("\\","/") : ENV['HOME']
     end
@@ -19,7 +22,7 @@ module Nimbu
         puts(msg)
       else
         print(msg)
-        STDOUT.flush
+        $stdout.flush
       end
     end
 
@@ -27,50 +30,40 @@ module Nimbu
       display("\r\e[0K#{line}", line_break)
     end
 
-    def deprecate(version)
-      display "!!! DEPRECATION WARNING: This command will be removed in version #{version}"
-      display
-    end
-
-    def error(msg)
-      STDERR.puts(format_with_bang(msg))
-      exit 1
+    def deprecate(message)
+      display "WARNING: #{message}"
     end
 
     def confirm_billing
       display
       display "This action will cause your account to be billed at the end of the month"
-      display "For more information, see http://devcenter.nimbu.com/articles/billing"
-      display "Are you sure you want to do this? (y/n) ", false
-      if ask.downcase == 'y'
-        nimbu.confirm_billing
-        return true
+      display "For more information, see https://devcenter.Nimbu.com/articles/usage-and-billing"
+      if confirm
+        Nimbu::Auth.client.confirm_billing
+        true
       end
     end
 
-    def confirm(message="Are you sure you wish to continue? (y/n)?")
+    def confirm(message="Are you sure you wish to continue? (y/n)")
       display("#{message} ", false)
-      ask.downcase == 'y'
+      ['y', 'yes'].include?(ask.downcase)
     end
 
     def confirm_command(app_to_confirm = app, message=nil)
-      raise(Nimbu::Command::CommandFailed, "No app specified.\nRun this command from app folder or set it adding --app <app name>") unless app_to_confirm
-
-      if respond_to?(:extract_option) && confirmed_app = extract_option('--confirm', false)
+      if confirmed_app = Nimbu::Command.current_options[:confirm]
         unless confirmed_app == app_to_confirm
           raise(Nimbu::Command::CommandFailed, "Confirmed app #{confirmed_app} did not match the selected app #{app_to_confirm}.")
         end
         return true
       else
         display
-        message ||= "WARNING: Potentially Destructive Action\nThis command will affect the app: #{app_to_confirm}"
+        message ||= "WARNING: Destructive Action\nThis command will affect the app: #{app_to_confirm}"
         message << "\nTo proceed, type \"#{app_to_confirm}\" or re-run this command with --confirm #{app_to_confirm}"
         output_with_bang(message)
         display
         display "> ", false
         if ask.downcase != app_to_confirm
-          output_with_bang "Input did not match #{app_to_confirm}. Aborted."
-          false
+          error("Confirmation did not match #{app_to_confirm}. Aborted.")
         else
           true
         end
@@ -78,12 +71,12 @@ module Nimbu
     end
 
     def format_date(date)
-      date = Time.parse(date) if date.is_a?(String)
-      date.strftime("%Y-%m-%d %H:%M %Z")
+      date = Time.parse(date).utc if date.is_a?(String)
+      date.strftime("%Y-%m-%d %H:%M %Z").gsub('GMT', 'UTC')
     end
 
     def ask
-      STDIN.gets.strip
+      $stdin.gets.to_s.strip
     end
 
     def shell(cmd)
@@ -117,14 +110,22 @@ module Nimbu
       %x{ git #{flattened_args} 2>&1 }.strip
     end
 
-    def time_ago(elapsed)
-      if elapsed < 60
-        "#{elapsed.floor}s ago"
-      elsif elapsed < (60 * 60)
-        "#{(elapsed / 60).floor}m ago"
-      else
-        "#{(elapsed / 60 / 60).floor}h ago"
+    def time_ago(since)
+      if since.is_a?(String)
+        since = Time.parse(since)
       end
+
+      elapsed = Time.now - since
+
+      message = since.strftime("%Y/%m/%d %H:%M:%S")
+      if elapsed <= 60
+        message << " (~ #{elapsed.floor}s ago)"
+      elsif elapsed <= (60 * 60)
+        message << " (~ #{(elapsed / 60).floor}m ago)"
+      elsif elapsed <= (60 * 60 * 25)
+        message << " (~ #{(elapsed / 60 / 60).floor}h ago)"
+      end
+      message
     end
 
     def truncate(text, length)
@@ -152,7 +153,6 @@ module Nimbu
     end
 
     def create_git_remote(remote, url)
-      return unless has_git?
       return if git('remote').split("\n").include?(remote)
       return unless File.exists?(".git")
       git "remote add #{remote} #{url}"
@@ -169,30 +169,33 @@ module Nimbu
         header = headers[index]
         lengths << longest([header].concat(objects.map { |o| o[column].to_s }))
       end
+      lines = lengths.map {|length| "-" * length}
+      lengths[-1] = 0 # remove padding from last column
       display_row headers, lengths
-      display_row lengths.map { |length| "-" * length }, lengths
+      display_row lines, lengths
       objects.each do |row|
         display_row columns.map { |column| row[column] }, lengths
       end
     end
 
     def display_row(row, lengths)
+      row_data = []
       row.zip(lengths).each do |column, length|
-        format = column.is_a?(Fixnum) ? "%#{length}s  " : "%-#{length}s  "
-        display format % column, false
+        format = column.is_a?(Fixnum) ? "%#{length}s" : "%-#{length}s"
+        row_data << format % column
       end
-      display
+      display(row_data.join("  "))
     end
 
     def json_encode(object)
       Nimbu::OkJson.encode(object)
-    rescue Nimbu::OkJson::ParserError
+    rescue Nimbu::OkJson::Error
       nil
     end
 
     def json_decode(json)
       Nimbu::OkJson.decode(json)
-    rescue Nimbu::OkJson::ParserError
+    rescue Nimbu::OkJson::Error
       nil
     end
 
@@ -207,7 +210,7 @@ module Nimbu
     end
 
     def with_tty(&block)
-      return unless $stdin.tty?
+      return unless $stdin.isatty
       begin
         yield
       rescue
@@ -216,7 +219,7 @@ module Nimbu
     end
 
     def get_terminal_environment
-      { "TERM" => ENV["TERM"], "COLUMNS" => `tput cols`, "LINES" => `tput lines` }
+      { "TERM" => ENV["TERM"], "COLUMNS" => `tput cols`.strip, "LINES" => `tput lines`.strip }
     rescue
       { "TERM" => ENV["TERM"] }
     end
@@ -227,28 +230,22 @@ module Nimbu
 
     ## DISPLAY HELPERS
 
-    def action(message)
-      output_with_arrow("#{message}... ", false)
-      Nimbu::Helpers.enable_error_capture
-      yield
-      Nimbu::Helpers.disable_error_capture
-      display "done", false
-      display(", #{@status}", false) if @status
+    def action(message, options={})
+      display("#{message}... ", false)
+      Nimbu::Helpers.error_with_failure = true
+      ret = yield
+      Nimbu::Helpers.error_with_failure = false
+      display((options[:success] || "done"), false)
+      if @status
+        display(", #{@status}", false)
+        @status = nil
+      end
       display
+      ret
     end
 
     def status(message)
       @status = message
-    end
-
-    def output(message="", new_line=true)
-      return if message.to_s.strip == ""
-      display("      " + message.split("\n").join("\n      "), new_line)
-    end
-
-    def output_with_arrow(message="", new_line=true)
-      return if message.to_s.strip == ""
-      display("----> " + message.split("\n").join("\n      "), new_line)
     end
 
     def format_with_bang(message)
@@ -261,10 +258,21 @@ module Nimbu
       display(format_with_bang(message), new_line)
     end
 
-    def error_with_failure(message)
-      display "failed"
-      output_with_bang(message)
-      exit 1
+    def error(message)
+      if Nimbu::Helpers.error_with_failure
+        display("failed")
+        Nimbu::Helpers.error_with_failure = false
+      end
+      $stderr.puts(format_with_bang(message))
+      exit(1)
+    end
+
+    def self.error_with_failure
+      @@error_with_failure ||= false
+    end
+
+    def self.error_with_failure=(new_error_with_failure)
+      @@error_with_failure = new_error_with_failure
     end
 
     def self.included_into
@@ -282,31 +290,6 @@ module Nimbu
     def self.extended(base)
       extended_into << base
     end
-
-    def self.enable_error_capture
-      included_into.each do |base|
-        base.send(:alias_method, :error_without_failure, :error)
-        base.send(:alias_method, :error, :error_with_failure)
-      end
-      extended_into.each do |base|
-        class << base
-          alias_method :error_without_failure, :error
-          alias_method :error, :error_with_failure
-        end
-      end
-    end
-
-    def self.disable_error_capture
-      included_into.each do |base|
-        base.send(:alias_method, :error, :error_without_failure)
-      end
-      extended_into.each do |base|
-        class << base
-          alias_method :error, :error_without_failure
-        end
-      end
-    end
-
 
     def display_header(message="", new_line=true)
       return if message.to_s.strip == ""
@@ -341,7 +324,128 @@ module Nimbu
 
     def hprint(string='')
       Kernel.print(string)
-      STDOUT.flush
+      $stdout.flush
+    end
+
+    def spinner(ticks)
+      %w(/ - \\ |)[ticks % 4]
+    end
+
+    def launchy(message, url)
+      action(message) do
+        require("launchy")
+        launchy = Launchy.open(url)
+        if launchy.respond_to?(:join)
+          launchy.join
+        end
+      end
+    end
+
+    # produces a printf formatter line for an array of items
+    # if an individual line item is an array, it will create columns
+    # that are lined-up
+    #
+    # line_formatter(["foo", "barbaz"])                 # => "%-6s"
+    # line_formatter(["foo", "barbaz"], ["bar", "qux"]) # => "%-3s   %-6s"
+    #
+    def line_formatter(array)
+      if array.any? {|item| item.is_a?(Array)}
+        cols = []
+        array.each do |item|
+          if item.is_a?(Array)
+            item.each_with_index { |val,idx| cols[idx] = [cols[idx]||0, (val || '').length].max }
+          end
+        end
+        cols.map { |col| "%-#{col}s" }.join("  ")
+      else
+        "%s"
+      end
+    end
+
+    def styled_array(array, options={})
+      fmt = line_formatter(array)
+      array = array.sort unless options[:sort] == false
+      array.each do |element|
+        display((fmt % element).rstrip)
+      end
+      display
+    end
+
+    def format_error(error, message='Nimbu client internal error.')
+      formatted_error = []
+      formatted_error << " !    #{message}"
+      formatted_error << ' !    Search for help at: https://help.Nimbu.com'
+      formatted_error << ' !    Or report a bug at: https://github.com/Nimbu/Nimbu/issues/new'
+      formatted_error << ''
+      formatted_error << "    Error:       #{error.message} (#{error.class})"
+      formatted_error << "    Backtrace:   #{error.backtrace.first}"
+      error.backtrace[1..-1].each do |line|
+        formatted_error << "                 #{line}"
+      end
+      if error.backtrace.length > 1
+        formatted_error << ''
+      end
+      command = ARGV.map do |arg|
+        if arg.include?(' ')
+          arg = %{"#{arg}"}
+        else
+          arg
+        end
+      end.join(' ')
+      formatted_error << "    Command:     Nimbu #{command}"
+      require 'Nimbu/auth'
+      unless Nimbu::Auth.host == Nimbu::Auth.default_host
+        formatted_error << "    Host:        #{Nimbu::Auth.host}"
+      end
+      if http_proxy = ENV['http_proxy'] || ENV['HTTP_PROXY']
+        formatted_error << "    HTTP Proxy:  #{http_proxy}"
+      end
+      if https_proxy = ENV['https_proxy'] || ENV['HTTPS_PROXY']
+        formatted_error << "    HTTPS Proxy: #{https_proxy}"
+      end
+      formatted_error << "    Version:     #{Nimbu.user_agent}"
+      formatted_error << "\n"
+      formatted_error.join("\n")
+    end
+
+    def styled_error(error, message='Nimbu client internal error.')
+      if Nimbu::Helpers.error_with_failure
+        display("failed")
+        Nimbu::Helpers.error_with_failure = false
+      end
+      $stderr.puts(format_error(error, message))
+    end
+
+    def styled_header(header)
+      display("=== #{header}")
+    end
+
+    def styled_hash(hash, keys=nil)
+      max_key_length = hash.keys.map {|key| key.to_s.length}.max + 2
+      keys ||= hash.keys.sort {|x,y| x.to_s <=> y.to_s}
+      keys.each do |key|
+        case value = hash[key]
+        when Array
+          if value.empty?
+            next
+          else
+            elements = value.sort {|x,y| x.to_s <=> y.to_s}
+            display("#{key}: ".ljust(max_key_length), false)
+            display(elements[0])
+            elements[1..-1].each do |element|
+              display("#{' ' * max_key_length}#{element}")
+            end
+            if elements.length > 1
+              display
+            end
+          end
+        when nil
+          next
+        else
+          display("#{key}: ".ljust(max_key_length), false)
+          display(value)
+        end
+      end
     end
 
     def string_distance(first, last)
@@ -378,7 +482,25 @@ module Nimbu
       distances[first.length][last.length]
     end
 
+    def suggestion(actual, possibilities)
+      distances = Hash.new {|hash,key| hash[key] = []}
 
+      possibilities.each do |suggestion|
+        distances[string_distance(actual, suggestion)] << suggestion
+      end
+
+      minimum_distance = distances.keys.min
+      if minimum_distance < 4
+        suggestions = distances[minimum_distance].sort
+        if suggestions.length == 1
+          "Perhaps you meant `#{suggestions.first}`."
+        else
+          "Perhaps you meant #{suggestions[0...-1].map {|suggestion| "`#{suggestion}`"}.join(', ')} or `#{suggestions.last}`."
+        end
+      else
+        nil
+      end
+    end
 
     module System
       # Cross-platform web browser command; respects the value set in $BROWSER.
@@ -434,5 +556,6 @@ module Nimbu
 
     include System
     extend System
+
   end
 end

@@ -1,7 +1,7 @@
 require 'nimbu/helpers'
 require 'nimbu/version'
-require "optparse"
 require 'term/ansicolor'
+require "optparse"
 
 class String
   include Term::ANSIColor

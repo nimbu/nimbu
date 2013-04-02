@@ -1,5 +1,4 @@
 require "nimbu/version"
-require "rest-client"
 require "nimbu-api"
 
 module Nimbu
