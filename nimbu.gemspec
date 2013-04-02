@@ -24,6 +24,8 @@ Gem::Specification.new do |s|
   s.add_dependency "listen"
   s.add_dependency "thin"
   s.add_dependency "rack-streaming-proxy"
+  s.add_dependency "compass"
+  s.add_dependency "haml"
 
   s.add_development_dependency "bundler", "~> 1.3"
   s.add_development_dependency "rake"
