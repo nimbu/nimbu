@@ -374,8 +374,8 @@ module Nimbu
     def format_error(error, message='Nimbu client internal error.')
       formatted_error = []
       formatted_error << " !    #{message}"
-      formatted_error << ' !    Search for help at: https://help.Nimbu.com'
-      formatted_error << ' !    Or report a bug at: https://github.com/Nimbu/Nimbu/issues/new'
+      formatted_error << ' !    Search for help at: https://help.nimbu.io'
+      formatted_error << ' !    Or report a bug at: https://github.com/nimbu/nimbu/issues/new'
       formatted_error << ''
       formatted_error << "    Error:       #{error.message} (#{error.class})"
       formatted_error << "    Backtrace:   #{error.backtrace.first}"
@@ -392,8 +392,8 @@ module Nimbu
           arg
         end
       end.join(' ')
-      formatted_error << "    Command:     Nimbu #{command}"
-      require 'Nimbu/auth'
+      formatted_error << "    Command:     nimbu #{command}"
+      require 'nimbu/auth'
       unless Nimbu::Auth.host == Nimbu::Auth.default_host
         formatted_error << "    Host:        #{Nimbu::Auth.host}"
       end

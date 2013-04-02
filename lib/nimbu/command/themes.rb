@@ -64,15 +64,22 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     end
   end
 
-  # download
+  # push
   #
-  # download all layouts, templates and assets
+  # push all layouts, templates and assets
+  # --liquid, --liquid-only   # only push template code
+  # --css, --css-only   # only push template code
+  # --js, --js-only   # only push template code
+  # --images-only   # only push new images
   #
   def push
-    simulate = args.include?("--dry-run") || args.include?("-d")
-    liquid_only = args.include?("--liquid-only") || args.include?("--liquid")
-    css_only = args.include?("--css-only") || args.include?("--css")
-    js_only = args.include?("--js-only") || args.include?("-js")
+    liquid_only = options[:liquid]
+    css_only = options[:css]
+    js_only = options[:js]
+    images_only = options[:images_only]
+
+    puts options
+    puts images_only
 
     # if !input.to_s.strip.empty?
     #   theme = input.to_s.strip
@@ -88,13 +95,13 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     snippets_glob = Dir.glob("#{Dir.pwd}/snippets/**/*.liquid")
     snippets_files = snippets_glob.map {|dir| dir.gsub("#{Dir.pwd}/snippets/","")}
 
-    if !(css_only || js_only)
+    if !(css_only || js_only || images_only)
       print "\nLayouts:\n"
       layouts_files.each do |layout|
         file = "#{Dir.pwd}/layouts/#{layout}"
         next if File.directory?(file)
         print " - layouts/#{layout}"
-        nimbu.upload_layout(theme, layout, IO.read(file))
+        nimbu.themes(:subdomain => Nimbu::Auth.site).layouts(:theme_id => theme).create({:name => layout, :content => IO.read(file)})
         print " (ok)\n"
       end
 
@@ -103,7 +110,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         file = "#{Dir.pwd}/templates/#{template}"
         next if File.directory?(file)
         print " - templates/#{template}"
-        nimbu.upload_template(theme, template, IO.read(file))
+        nimbu.themes(:subdomain => Nimbu::Auth.site).templates(:theme_id => theme).create({:name => template, :content => IO.read(file)})
         print " (ok)\n"
       end
 
@@ -112,7 +119,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         file = "#{Dir.pwd}/snippets/#{snippet}"
         next if File.directory?(file)
         print " - snippets/#{snippet}"
-        nimbu.upload_snippet(theme, snippet, IO.read(file))
+        nimbu.themes(:subdomain => Nimbu::Auth.site).snippets(:theme_id => theme).create({:name => snippet, :content => IO.read(file)})
         print " (ok)\n"
       end
     end
@@ -120,12 +127,13 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     if !liquid_only
       css_glob = Dir.glob("#{Dir.pwd}/stylesheets/**/*.css")
       css_files = css_glob.map {|dir| dir.gsub("#{Dir.pwd}/stylesheets/","")}
-      if !js_only
+      if !(js_only || images_only)
         print "\nStylesheet:\n"
         css_files.each do |css|
           file = "#{Dir.pwd}/stylesheets/#{css}"
           next if File.directory?(file) || (!anyFileWithWord?(layouts_glob,css) && !anyFileWithWord?(templates_glob,css))
-          nimbu.upload_asset(theme, "stylesheets/#{css}", File.open(file))
+          io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "stylesheets/#{css}", :file => io})
           print " - stylesheets/#{css}"
           print " (ok)\n"
         end
@@ -133,12 +141,13 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
 
       js_glob = Dir.glob("#{Dir.pwd}/javascripts/**/*.js")
       js_files = js_glob.map {|dir| dir.gsub("#{Dir.pwd}/javascripts/","")}
-      if !css_only
+      if !(css_only || images_only)
         print "\nJavascripts:\n"
         js_files.each do |js|
           file = "#{Dir.pwd}/javascripts/#{js}"
           next if File.directory?(file) || (!anyFileWithWord?(layouts_glob,js) && !anyFileWithWord?(templates_glob,js))
-          nimbu.upload_asset(theme, "javascripts/#{js}", File.open(file))
+          io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "javascripts/#{js}", :file => io})
           print " - javascripts/#{js}"
           print " (ok)\n"
         end
@@ -150,7 +159,8 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         image_files.each do |image|
           file = "#{Dir.pwd}/images/#{image}"
           next if File.directory?(file) || (!anyFileWithWord?(css_glob,image) && !anyFileWithWord?(js_glob,image) && !anyFileWithWord?(layouts_glob,image) && !anyFileWithWord?(templates_glob,image))
-          nimbu.upload_asset(theme, "images/#{image}", File.open(file))
+          io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "images/#{image}", :file => io})
           print " - images/#{image}"
           print " (ok)\n"
         end
