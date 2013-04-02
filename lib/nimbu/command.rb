@@ -179,7 +179,6 @@ module Nimbu
         object.send(method)
       rescue Interrupt, StandardError, SystemExit => error
         # load likely error classes, as they may not be loaded yet due to defered loads
-        require 'rest_client'
         raise(error)
       end
     # rescue Nimbu::API::Errors::Unauthorized, RestClient::Unauthorized
