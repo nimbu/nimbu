@@ -3,7 +3,7 @@ require "nimbu/command/base"
 # open the current site in your browser (simulator, admin)
 #
 class Nimbu::Command::Browse < Nimbu::Command::Base
-  # index
+  # browse
   #
   # open the current site in your browser
   #
@@ -25,7 +25,7 @@ class Nimbu::Command::Browse < Nimbu::Command::Base
     exec(cmd)
   end
 
-  # index
+  # browse:simulator
   #
   # open the simulator for your current site
   #
@@ -36,7 +36,7 @@ class Nimbu::Command::Browse < Nimbu::Command::Base
     exec(cmd)
   end
 
-  # index
+  # browse:admin
   #
   # open the admin area for your current site
   #

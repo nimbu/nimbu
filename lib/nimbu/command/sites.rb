@@ -3,7 +3,7 @@ require "nimbu/command/base"
 # interacting with your sites (list, create)
 #
 class Nimbu::Command::Sites < Nimbu::Command::Base
-  # index
+  # sites
   #
   # list sites you can edit
   #
@@ -21,7 +21,7 @@ class Nimbu::Command::Sites < Nimbu::Command::Base
     end
   end
 
-  # index
+  # sites:list
   #
   # list sites you can edit
   #

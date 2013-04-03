@@ -4,7 +4,7 @@ require "nimbu/command/base"
 #
 class Nimbu::Command::Themes < Nimbu::Command::Base
 
-  # server
+  # themes
   #
   # list available commands or display help for a specific command
   #
@@ -22,7 +22,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     puts "Currently this directory is configured for '#{Nimbu::Auth.theme.red.bold}'"
   end
 
-  # list
+  # themes:list
   #
   # list all layouts, templates and assets
   #
@@ -64,7 +64,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     end
   end
 
-  # push
+  # themes:push
   #
   # push all layouts, templates and assets
   # --liquid, --liquid-only   # only push template code
