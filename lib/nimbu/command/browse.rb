@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "nimbu/command/base"
 
 # open the current site in your browser (simulator, admin)

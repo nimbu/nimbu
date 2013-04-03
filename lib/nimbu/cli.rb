@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "nimbu"
 require "nimbu/command"
 require "nimbu/helpers"

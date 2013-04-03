@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "vendor/nimbu/okjson"
 
 module Nimbu

@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require 'sinatra'
 require "sinatra/reloader"
 require "sinatra/multi_route"
@@ -137,9 +138,9 @@ module Nimbu
             template_file_haml = File.join(Dir.pwd,'templates',"#{template}.haml")
 
             if File.exists?(template_file)
-              template_code = IO.read(template_file)
+              template_code = IO.read(template_file).force_encoding('UTF-8')
             elsif File.exists?(template_file_haml)
-              template_code = IO.read(template_file_haml)
+              template_code = IO.read(template_file_haml).force_encoding('UTF-8')
               template = "#{template}.haml"
             else
               puts red("Layout file '#{template_file}' is missing...")
@@ -164,10 +165,10 @@ module Nimbu
             layout_file_haml = File.join(Dir.pwd,'layouts',"#{layout}.haml")
 
             if File.exists?(layout_file)
-              layout_code = IO.read(layout_file)
+              layout_code = IO.read(layout_file).force_encoding('UTF-8')
             elsif File.exists?(layout_file_haml)
               layout = "#{layout}.haml"
-              layout_code = IO.read(layout_file_haml)
+              layout_code = IO.read(layout_file_haml).force_encoding('UTF-8')
             else
               puts red("Layout file '#{layout_file}' is missing...")
               return render_missing(File.join('layouts',layout),'layout')
@@ -300,11 +301,11 @@ module Nimbu
             snippet_file_haml = File.join(Dir.pwd,'snippets',"#{snippet_name}.haml")
 
             if File.exists?(snippet_file)
-              snippet_code = IO.read(snippet_file)
+              snippet_code = IO.read(snippet_file).force_encoding('UTF-8')
               snippets[snippet_name.to_sym] = snippet_code
               self.parse_snippets(snippet_code, snippets)
             elsif File.exists?(snippet_file_haml)
-              snippet_code = IO.read(snippet_file_haml)
+              snippet_code = IO.read(snippet_file_haml).force_encoding('UTF-8')
               snippets["#{snippet_name}.haml".to_sym] = snippet_code
               self.parse_snippets(snippet_code, snippets)
             else

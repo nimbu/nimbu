@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "yaml"
 require "nimbu"
 require "nimbu/helpers"
@@ -180,7 +181,7 @@ class Nimbu::Auth
     end
 
     def read_credentials
-      credentials = File.read(credentials_file) if File.exists?(credentials_file)
+      credentials = File.read(credentials_file).force_encoding('UTF-8') if File.exists?(credentials_file)
       if credentials && credentials =~ /^(bearer|oauth2|token) ([\w]+)$/i
         $2
       else

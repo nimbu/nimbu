@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require 'nimbu/helpers'
 require 'nimbu/version'
 require 'term/ansicolor'
@@ -144,7 +145,7 @@ module Nimbu
         FileUtils.mkdir_p(usage_directory)
         usage_file = usage_directory << "/#{Nimbu::VERSION}"
         usage = if File.exists?(usage_file)
-          json_decode(File.read(usage_file))
+          json_decode(File.read(usage_file).force_encoding('UTF-8'))
         else
           {}
         end

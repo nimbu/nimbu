@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "yaml"
 require "nimbu"
 require "nimbu/helpers"
@@ -48,7 +49,7 @@ class Nimbu::Auth
 
     def associate_key(key)
       display "Uploading SSH public key #{key}"
-      client.add_key(File.read(key))
+      client.add_key(File.read(key).force_encoding('UTF-8'))
     end
   end
 end

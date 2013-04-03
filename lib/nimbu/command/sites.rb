@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "nimbu/command/base"
 
 # interacting with your sites (list, create)

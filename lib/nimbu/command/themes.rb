@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "nimbu/command/base"
 
 # working with themes (upload / download)
@@ -101,7 +102,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         file = "#{Dir.pwd}/layouts/#{layout}"
         next if File.directory?(file)
         print " - layouts/#{layout}"
-        nimbu.themes(:subdomain => Nimbu::Auth.site).layouts(:theme_id => theme).create({:name => layout, :content => IO.read(file)})
+        nimbu.themes(:subdomain => Nimbu::Auth.site).layouts(:theme_id => theme).create({:name => layout, :content => IO.read(file).force_encoding('UTF-8')})
         print " (ok)\n"
       end
 
@@ -110,7 +111,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         file = "#{Dir.pwd}/templates/#{template}"
         next if File.directory?(file)
         print " - templates/#{template}"
-        nimbu.themes(:subdomain => Nimbu::Auth.site).templates(:theme_id => theme).create({:name => template, :content => IO.read(file)})
+        nimbu.themes(:subdomain => Nimbu::Auth.site).templates(:theme_id => theme).create({:name => template, :content => IO.read(file).force_encoding('UTF-8')})
         print " (ok)\n"
       end
 
@@ -119,7 +120,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         file = "#{Dir.pwd}/snippets/#{snippet}"
         next if File.directory?(file)
         print " - snippets/#{snippet}"
-        nimbu.themes(:subdomain => Nimbu::Auth.site).snippets(:theme_id => theme).create({:name => snippet, :content => IO.read(file)})
+        nimbu.themes(:subdomain => Nimbu::Auth.site).snippets(:theme_id => theme).create({:name => snippet, :content => IO.read(file).force_encoding('UTF-8')})
         print " (ok)\n"
       end
     end

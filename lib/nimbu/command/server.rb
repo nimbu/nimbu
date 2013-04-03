@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require "nimbu/command/base"
 require "nimbu/server/base"
 require 'term/ansicolor'
