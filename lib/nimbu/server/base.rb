@@ -287,12 +287,12 @@ module Nimbu
 
       def parse_snippets(code, snippets = {})
         # Parse template file for snippets
-        search = Regexp.new("\{\% include (.*) \%\}")
+        search = /\{\% include ([^\s]*).*\%\}/
         matches = code.scan(search)
         if !matches.empty?
           matches.each do |snippet|
             # There seems to be a special layout?
-            snippet_name = snippet[0].gsub(/,$/, '').gsub(/^'/, '').gsub(/'$/, '').gsub(/^"/, '').gsub(/"$/, '')
+            snippet_name = snippet[0].strip.gsub(/,$/, '').gsub(/^'/, '').gsub(/'$/, '').gsub(/^"/, '').gsub(/"$/, '')
             if !(snippet_name =~ /\.liquid$/)
               snippet_name = "#{snippet_name}.liquid"
             end

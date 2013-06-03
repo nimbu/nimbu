@@ -192,7 +192,7 @@ class HamlWatcher
         end if removed
       end
       listener.change(&modifier)
-      listener.start(false)
+      listener.start
       listener
     end
 

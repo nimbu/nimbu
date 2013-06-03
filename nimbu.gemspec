@@ -21,13 +21,14 @@ Gem::Specification.new do |s|
   s.add_dependency "rubyzip"
   s.add_dependency "sinatra"
   s.add_dependency "sinatra-contrib"
-  s.add_dependency "listen", '~> 0.7.3'
+  s.add_dependency "listen"
   s.add_dependency "rb-fsevent", '~> 0.9'
   s.add_dependency "thin"
   s.add_dependency "rack-streaming-proxy"
   s.add_dependency "compass"
   s.add_dependency "haml"
   s.add_dependency "rack", "~> 1.5.2"
+  s.add_dependency "json", "~> 1.7.7"
 
 
   s.add_development_dependency "bundler", "~> 1.3"
