@@ -12,8 +12,12 @@ class Nimbu::Auth
 
     def client
       @client ||= begin
-        Nimbu::Client.new(:oauth_token => token, :endpoint => host)
+        Nimbu::Client.new(:oauth_token => token, :endpoint => host, :user_agent => self.user_agent)
       end
+    end
+
+    def user_agent
+      "nimbu-toolbelt/#{Nimbu::VERSION} (#{RUBY_PLATFORM}) ruby/#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}".freeze
     end
 
     def login
@@ -216,8 +220,12 @@ class Nimbu::Auth
       password = running_on_windows? ? ask_for_password_on_windows : ask_for_password
 
       begin
-        oauth = Nimbu::Client.new(:basic_auth => "#{user}:#{password}", :endpoint => host).authenticate
-        oauth.token
+        basic_client = Nimbu::Client.new(
+          :basic_auth => "#{user}:#{password}",
+          :endpoint => host,
+          :user_agent => self.user_agent
+        )
+        basic_client.authenticate.token
       rescue Exception => e
         if e.respond_to?(:http_status_code) && e.http_status_code == 401
           display " => could not login... please check your username and/or password!\n\n"
