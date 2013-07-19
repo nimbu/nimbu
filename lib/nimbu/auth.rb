@@ -221,6 +221,8 @@ class Nimbu::Auth
       rescue Exception => e
         if e.respond_to?(:http_status_code) && e.http_status_code == 401
           display " => could not login... please check your username and/or password!\n\n"
+        else
+          display " => hmmmm... an error occurred: #{e}. \n\n\nIf this continues to occur, please report \nthe error at https://github.com/nimbu/nimbu/issues.\n\n"
         end
         nil
       end
