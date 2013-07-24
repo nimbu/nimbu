@@ -105,89 +105,88 @@ module Nimbu
         # end
         ### GET THE TEMPLATES ###
         path = request.path == "/" ? request.path : request.path.gsub(/\/$/,'')
-        if !request.xhr?
+
+        begin
+          params = ({} || params).merge({:simulator => {
+                          :host => request.host,
+                          :port => request.port,
+                          :path => path,
+                          :method => method,
+                          :session => session,
+                          :headers => request.env.to_json,
+                        }})
+          result = nimbu.simulator(:subdomain => Nimbu::Auth.site).recipe(params)
+          puts result if Nimbu.debug
+        rescue Exception => e
+          if e.respond_to?(:http_body)
+            return e.http_body
+          else
+            raise e
+          end
+        end
+
+        if result["template"].nil? && !request.xhr?
+          raise Sinatra::NotFound
+        end
+
+        unless result["template"] == "<<<< REDIRECT >>>>"
+          template = result["template"].gsub(/buddha$/,'liquid')
+          # Then render everything
+          puts green(" => using template '#{template}'")
+          # Read the template file
+          template_file = File.join(Dir.pwd,'templates',template)
+          template_file_haml = File.join(Dir.pwd,'templates',"#{template}.haml")
+
+          if File.exists?(template_file)
+            template_code = IO.read(template_file).force_encoding('UTF-8')
+          elsif File.exists?(template_file_haml)
+            template_code = IO.read(template_file_haml).force_encoding('UTF-8')
+            template = "#{template}.haml"
+          else
+            puts red("Layout file '#{template_file}' is missing...")
+            return render_missing(File.join('templates',template),'template')
+          end
+
+          if template_code=~ /You have an Error in your HAML code/
+            return template_code
+          end
+
+          # Parse template file for a special layout
+          search = Regexp.new("\{\% layout \'(.*)\' \%\}")
+          if search =~ template_code
+            # There seems to be a special layout?
+            layout = $1
+          else
+            layout = 'default.liquid'
+          end
+
+          # Read the layout file
+          layout_file = File.join(Dir.pwd,'layouts',layout)
+          layout_file_haml = File.join(Dir.pwd,'layouts',"#{layout}.haml")
+
+          if File.exists?(layout_file)
+            layout_code = IO.read(layout_file).force_encoding('UTF-8')
+          elsif File.exists?(layout_file_haml)
+            layout = "#{layout}.haml"
+            layout_code = IO.read(layout_file_haml).force_encoding('UTF-8')
+          else
+            puts red("Layout file '#{layout_file}' is missing...")
+            return render_missing(File.join('layouts',layout),'layout')
+          end
+
+          puts green("    using layout '#{layout}'")
+
           begin
-            params = ({} || params).merge({:simulator => {
-                            :host => request.host,
-                            :port => request.port,
-                            :path => path,
-                            :method => method,
-                            :session => session,
-                            :headers => request.env.to_json,
-                          }})
-            result = nimbu.simulator(:subdomain => Nimbu::Auth.site).recipe(params)
-            puts result if Nimbu.debug
+            snippets = parse_snippets(template_code)
+            snippets = parse_snippets(layout_code,snippets)
           rescue Exception => e
-            if e.respond_to?(:http_body)
-              return e.http_body
-            else
-              raise e
-            end
+            # If there is a snippet missing, we raise an error
+            puts red("Snippet file '#{e.message}' is missing...")
+            return render_missing(e.message,'snippet')
           end
 
-          if result["template"].nil?
-            raise Sinatra::NotFound
-          end
-
-          unless result["template"] == "<<<< REDIRECT >>>>"
-            template = result["template"].gsub(/buddha$/,'liquid')
-            # Then render everything
-            puts green(" => using template '#{template}'")
-            # Read the template file
-            template_file = File.join(Dir.pwd,'templates',template)
-            template_file_haml = File.join(Dir.pwd,'templates',"#{template}.haml")
-
-            if File.exists?(template_file)
-              template_code = IO.read(template_file).force_encoding('UTF-8')
-            elsif File.exists?(template_file_haml)
-              template_code = IO.read(template_file_haml).force_encoding('UTF-8')
-              template = "#{template}.haml"
-            else
-              puts red("Layout file '#{template_file}' is missing...")
-              return render_missing(File.join('templates',template),'template')
-            end
-
-            if template_code=~ /You have an Error in your HAML code/
-              return template_code
-            end
-
-            # Parse template file for a special layout
-            search = Regexp.new("\{\% layout \'(.*)\' \%\}")
-            if search =~ template_code
-              # There seems to be a special layout?
-              layout = $1
-            else
-              layout = 'default.liquid'
-            end
-
-            # Read the layout file
-            layout_file = File.join(Dir.pwd,'layouts',layout)
-            layout_file_haml = File.join(Dir.pwd,'layouts',"#{layout}.haml")
-
-            if File.exists?(layout_file)
-              layout_code = IO.read(layout_file).force_encoding('UTF-8')
-            elsif File.exists?(layout_file_haml)
-              layout = "#{layout}.haml"
-              layout_code = IO.read(layout_file_haml).force_encoding('UTF-8')
-            else
-              puts red("Layout file '#{layout_file}' is missing...")
-              return render_missing(File.join('layouts',layout),'layout')
-            end
-
-            puts green("    using layout '#{layout}'")
-
-            begin
-              snippets = parse_snippets(template_code)
-              snippets = parse_snippets(layout_code,snippets)
-            rescue Exception => e
-              # If there is a snippet missing, we raise an error
-              puts red("Snippet file '#{e.message}' is missing...")
-              return render_missing(e.message,'snippet')
-            end
-
-            if snippets.any?
-              puts green("    using snippets '#{snippets.keys.join('\', \'')}'")
-            end
+          if snippets.any?
+            puts green("    using snippets '#{snippets.keys.join('\', \'')}'")
           end
         else
           template_file = ""
