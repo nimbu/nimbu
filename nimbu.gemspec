@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
 
   # specify any dependencies here; for example:
   s.add_dependency "term-ansicolor", "~> 1.0.5"
-  s.add_dependency "nimbu-api", "~> 0.1.4"
+  s.add_dependency "nimbu-api", "~> 0.1.5"
   s.add_dependency "rubyzip"
   s.add_dependency "sinatra"
   s.add_dependency "sinatra-contrib"
@@ -29,7 +29,7 @@ Gem::Specification.new do |s|
   s.add_dependency "haml"
   s.add_dependency "rack", "~> 1.5.2"
   s.add_dependency "json", "~> 1.7.7"
-
+  s.add_dependency "diffy"
 
   s.add_development_dependency "bundler", "~> 1.3"
   s.add_development_dependency "rake"

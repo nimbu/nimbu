@@ -65,6 +65,24 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     end
   end
 
+  # themes
+  #
+  # list available commands or display help for a specific command
+  #
+  def diff
+    require 'diffy'
+    @diff = {}
+    input = args.shift.downcase rescue nil
+    theme = if !input.to_s.strip.empty?
+      input.to_s.strip
+    else
+      Nimbu::Auth.theme
+    end
+    display "\nShowing differences between local and server\nlayouts, templates, snippets and assets for '#{theme.green.bold}':"
+    json = nimbu.themes(:subdomain => Nimbu::Auth.site).get(theme)
+    check_differences(json, theme, "layouts", "templates", "snippets")
+  end
+
   # themes:push
   #
   # push all layouts, templates and assets
@@ -170,6 +188,34 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
   end
 
   private
+
+  def check_differences(contents, theme, *types)
+    types.each do |type|
+      if contents[type].any?
+        print "\n\n#{type.capitalize}: ".bold
+        contents[type].each { |layout| compare(layout, theme, type) }
+        display "no differences found!" if @diff[type].nil?
+      end
+    end
+  end
+
+  def compare(data, theme, type)
+    file = "#{Dir.pwd}/#{type}/#{data["name"]}"
+    if File.exists?(file)
+      local = IO.read(file).force_encoding('UTF-8').to_s.gsub(/\r\n?/, "\n").strip
+      api = nimbu.themes(:subdomain => Nimbu::Auth.site)
+      json = api.send(type, :theme_id => theme).get(:"#{type[0..-2]}_id" => data['id'])
+      server = json["code"].to_s.force_encoding('UTF-8').gsub(/\r\n?/, "\n").strip
+      diff = Diffy::Diff.new(local, server, :include_diff_info => true, :context => 3).to_s(:color).strip
+      if diff != ""
+        print "\n - #{type}/#{data["name"]} has #{'changed'.yellow.bold }:\n\n#{diff}" 
+        @diff[type] = true
+      end
+    else
+      @diff[type] = true
+      print "\n - #{type}/#{data["name"]} is #{'missing'.red.bold }"
+    end
+  end
 
   def anyFileWithWord?(glob,word)
     found = false
