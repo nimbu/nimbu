@@ -21,7 +21,7 @@ Gem::Specification.new do |s|
   s.add_dependency "rubyzip"
   s.add_dependency "sinatra"
   s.add_dependency "sinatra-contrib"
-  s.add_dependency "listen"
+  s.add_dependency "listen", "~> 0.1.x"
   s.add_dependency "rb-fsevent", '~> 0.9'
   s.add_dependency "thin"
   s.add_dependency "rack-streaming-proxy"
