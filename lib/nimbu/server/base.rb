@@ -152,10 +152,13 @@ module Nimbu
           end
 
           # Parse template file for a special layout
-          search = Regexp.new("\{\% layout \'(.*)\' \%\}")
+          search = Regexp.new("\{\% layout (.*) \%\}")
           if search =~ template_code
             # There seems to be a special layout?
-            layout = $1
+            layout = $1.strip.gsub(/,$/, '').gsub(/^'/, '').gsub(/'$/, '').gsub(/^"/, '').gsub(/"$/, '')
+            if !(layout =~ /\.liquid$/)
+              layout = "#{layout}.liquid"
+            end
           else
             layout = 'default.liquid'
           end
