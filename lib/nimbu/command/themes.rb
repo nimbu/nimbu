@@ -97,9 +97,6 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     js_only = options[:js]
     images_only = options[:images_only]
 
-    puts options
-    puts images_only
-
     # if !input.to_s.strip.empty?
     #   theme = input.to_s.strip
     # else
@@ -150,7 +147,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         print "\nStylesheet:\n"
         css_files.each do |css|
           file = "#{Dir.pwd}/stylesheets/#{css}"
-          next if File.directory?(file) || (!anyFileWithWord?(layouts_glob,css) && !anyFileWithWord?(templates_glob,css))
+          next if File.directory?(file) || (!anyFileWithWord?(layouts_glob,css) && !anyFileWithWord?(templates_glob,css) && !anyFileWithWord?(snippets_glob,css))
           io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
           nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "stylesheets/#{css}", :file => io})
           print " - stylesheets/#{css}"
@@ -164,7 +161,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         print "\nJavascripts:\n"
         js_files.each do |js|
           file = "#{Dir.pwd}/javascripts/#{js}"
-          next if File.directory?(file) || (!anyFileWithWord?(layouts_glob,js) && !anyFileWithWord?(templates_glob,js))
+          next if File.directory?(file) || (!anyFileWithWord?(layouts_glob,js) && !anyFileWithWord?(templates_glob,js) && !anyFileWithWord?(snippets_glob,js))
           io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
           nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "javascripts/#{js}", :file => io})
           print " - javascripts/#{js}"
@@ -177,10 +174,23 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         print "\nImages:\n"
         image_files.each do |image|
           file = "#{Dir.pwd}/images/#{image}"
-          next if File.directory?(file) || (!anyFileWithWord?(css_glob,image) && !anyFileWithWord?(js_glob,image) && !anyFileWithWord?(layouts_glob,image) && !anyFileWithWord?(templates_glob,image))
+          next if File.directory?(file) || (!anyFileWithWord?(css_glob,image) && !anyFileWithWord?(js_glob,image) && !anyFileWithWord?(layouts_glob,image) && !anyFileWithWord?(templates_glob,image) && !anyFileWithWord?(snippets_glob,image))
           io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
           nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "images/#{image}", :file => io})
           print " - images/#{image}"
+          print " (ok)\n"
+        end
+      end
+
+      font_files = Dir.glob("#{Dir.pwd}/fonts/**/*").map {|dir| dir.gsub("#{Dir.pwd}/fonts/","")} rescue []
+      if !(css_only || js_only)
+        print "\nFonts:\n"
+        font_files.each do |font|
+          file = "#{Dir.pwd}/fonts/#{font}"
+          next if File.directory?(file) || (!anyFileWithWord?(css_glob,font) && !anyFileWithWord?(js_glob,font) && !anyFileWithWord?(layouts_glob,font) && !anyFileWithWord?(templates_glob,font) && !anyFileWithWord?(snippets_glob,font))
+          io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "fonts/#{font}", :file => io})
+          print " - fonts/#{font}"
           print " (ok)\n"
         end
       end
