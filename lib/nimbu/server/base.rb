@@ -172,7 +172,7 @@ module Nimbu
         ["layouts","templates","snippets"].each do |type|
           load_files(type)
         end
-        Base64.encode64(Zlib::Deflate.deflate(json_encode(@templates), Zlib::DEFAULT_COMPRESSION))
+        Base64.encode64(Zlib::Deflate.deflate(@templates.to_json, Zlib::DEFAULT_COMPRESSION))
       end
 
       def load_files(directory)
