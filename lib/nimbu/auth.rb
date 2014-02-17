@@ -10,6 +10,13 @@ class Nimbu::Auth
     attr_accessor :credentials
     attr_accessor :configuration
 
+    def simulator_id
+      return @simulator_id if defined? @simulator_id
+
+      ranges = [('a'..'z'),('A'..'Z'),(0..9)].map{|i| i.to_a}.flatten
+      @simulator_id ||= (1..40).map{ ranges[rand(ranges.length)]  }.join
+    end
+
     def client
       @client ||= begin
         Nimbu::Client.new(:oauth_token => token, :endpoint => host, :user_agent => self.user_agent)

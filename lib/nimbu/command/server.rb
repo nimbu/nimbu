@@ -78,8 +78,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
         [:INT, :TERM].each do |sig|
           Signal.trap(sig) do
             puts green("== Stopping HAML watcher\n")
-            haml_listener.stop
-            puts haml_listener
+            Thread.new { haml_listener.stop }
           end
         end
         Process.waitall
