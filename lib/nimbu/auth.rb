@@ -19,7 +19,7 @@ class Nimbu::Auth
 
     def client
       @client ||= begin
-        Nimbu::Client.new(:oauth_token => token, :endpoint => host, :user_agent => self.user_agent)
+        Nimbu::Client.new(:oauth_token => token, :endpoint => host, :user_agent => self.user_agent, :auto_pagination => true)
       end
     end
 
