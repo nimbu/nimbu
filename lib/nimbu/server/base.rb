@@ -57,8 +57,7 @@ module Nimbu
         path = extract_path(request)
         templates = pack_templates!
 
-        params = request.params || {}
-        params.merge!({
+        params = {
           simulator: {
             version: "v2",
             path:    path,
@@ -66,12 +65,13 @@ module Nimbu
             request: {
               host:    request.host,
               port:    request.port,
+              params:  request.params || {},
               method:  method,
               session: session,
               headers: request.env.to_json
             }
           }
-        })
+        }
 
         # Send the templates to the browser
         begin
