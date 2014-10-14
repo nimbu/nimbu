@@ -26,16 +26,19 @@ module Nimbu
       set :views,  File.expand_path('../views', __FILE__) # set up the views dir
       set :haml, { format: :html5 }                    # if you use haml
 
+      use Rack::StreamingProxy::Proxy do |request|
+        if request.path.start_with?('/favicon.ico')
+          "http://#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}/favicon.ico"
+        end
+      end
+
+      Rack::StreamingProxy::Proxy.logger = Logger.new("/dev/null")
+
       # Your "actions" go here…
       #
 
       get '/__sinatra__/*' do
         return ""
-      end
-
-      get '/favicon.ico' do
-        proxy = Rack::StreamingProxy::ProxyRequest.new(request,"http://#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}/favicon.ico")
-        return [proxy.status, proxy.headers, proxy]
       end
 
       route :get, :post, :put, :delete, :patch, '*' do

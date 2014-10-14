@@ -24,9 +24,7 @@ Gem::Specification.new do |s|
   s.add_dependency "listen", "~> 1.x"
   s.add_dependency "rb-fsevent", '~> 0.9'
   s.add_dependency "thin"
-  s.add_dependency "rack-streaming-proxy"
-  s.add_dependency "compass"
-  s.add_dependency "haml"
+  s.add_dependency "rack-streaming-proxy", "2.0.1"
   s.add_dependency "rack", "~> 1.5.2"
   s.add_dependency "json", "~> 1.7.7"
   s.add_dependency "diffy"
