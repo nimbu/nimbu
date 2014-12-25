@@ -26,7 +26,7 @@ Gem::Specification.new do |s|
   s.add_dependency "thin"
   s.add_dependency "rack-streaming-proxy", "2.0.1"
   s.add_dependency "rack", "~> 1.5.2"
-  s.add_dependency "json", "~> 1.7.7"
+  s.add_dependency "json"
   s.add_dependency "diffy"
 
   s.add_development_dependency "bundler", "~> 1.3"
