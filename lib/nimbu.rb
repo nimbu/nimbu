@@ -10,4 +10,8 @@ module Nimbu
   def self.debug
     @debug || false
   end
+
+  def self.cli_options
+    @cli_options ||= {}
+  end
 end

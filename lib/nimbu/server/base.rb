@@ -47,7 +47,7 @@ module Nimbu
         method = detect_http_method(request)
         @templates = {}
 
-        if cookies["nimbu_simulator_id"] != Nimbu::Auth.simulator_id
+        if !Nimbu.cli_options[:nocookies] && cookies["nimbu_simulator_id"] != Nimbu::Auth.simulator_id
           puts yellow("Refreshing session for simulation...")
           cookies.each {|k,v| cookies.delete(k)}
           response.set_cookie "nimbu_simulator_id", { :value => Nimbu::Auth.simulator_id, :http_only => false, :path => "/" }

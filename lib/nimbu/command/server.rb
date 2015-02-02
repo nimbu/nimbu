@@ -12,10 +12,11 @@ class Nimbu::Command::Server < Nimbu::Command::Base
   #
   # starts a local development server, using the data from the Nimbu cloud in real time.
   #
-  # -p PORT, --port PORT      # set the port on which to start the http server
+  # -p PORT, --port PORT  # set the port on which to start the http server
   # -h,  --haml           # start local HAML watcher
   # -c,  --compass        # start local Compass watcher
   # -d,  --debug          # enable debugging output
+  # --nocookies           # disable session refresh cookie check
   #
   def index
     # Check if config file is present?
@@ -23,8 +24,13 @@ class Nimbu::Command::Server < Nimbu::Command::Base
       print red(bold("ERROR")), ": this directory does not seem to contain any Nimbu theme or your credentials are not set. \n ==> Run \"", bold { "nimbu init"}, "\" to initialize this directory."
     else
       no_compilation = true #! options[:'no-compile']
-      with_haml = options[:haml]
-      with_compass = options[:compass]
+      with_haml    = options[:haml]
+      with_compass = options[:compass] || options[:c]
+      no_cookies   = options[:nocookies]
+
+      if no_cookies
+        Nimbu.cli_options[:nocookies] = true
+      end
 
       if with_compass
         require 'compass'
@@ -39,8 +45,9 @@ class Nimbu::Command::Server < Nimbu::Command::Base
       services << "HAML" if with_haml
       services << "Compass" if with_compass
       title = "Starting up Nimbu Server"
-      title << "(with local #{services.join(' and ')} watcher)" if with_compass || with_haml
-      title << "..."
+      title << " (with local #{services.join(' and ')} watcher)" if with_compass || with_haml
+      title << " (skipping cookies check)" if no_cookies
+      title << " ..."
       puts white("\n#{title}")
       puts green(nimbu_header)
       puts green("\nConnnected to '#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}', using '#{Nimbu::Auth.theme}' theme#{Nimbu.debug ? ' (in debug mode)'.red : nil}.\n")
