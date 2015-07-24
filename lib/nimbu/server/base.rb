@@ -180,8 +180,9 @@ module Nimbu
 
       def load_files(directory)
         glob = Dir["#{Dir.pwd}/#{directory}/**/*.liquid","#{Dir.pwd}/#{directory}/**/*.liquid.haml"]
+        directory = "#{Dir.pwd}/#{directory}/"
         glob.each do |file|
-          name = file.gsub("#{Dir.pwd}/#{directory}/","")
+          name = file.gsub(/#{directory}/i,"")
           code = IO.read(file).force_encoding('UTF-8')
           @templates[directory] ||= {}
           @templates[directory][name.to_s] = code
