@@ -178,14 +178,14 @@ module Nimbu
         Base64.encode64(Zlib::Deflate.deflate(@templates.to_json, Zlib::DEFAULT_COMPRESSION))
       end
 
-      def load_files(directory)
-        glob = Dir["#{Dir.pwd}/#{directory}/**/*.liquid","#{Dir.pwd}/#{directory}/**/*.liquid.haml"]
-        directory = "#{Dir.pwd}/#{directory}/"
+      def load_files(type)
+        glob = Dir["#{Dir.pwd}/#{type}/**/*.liquid","#{Dir.pwd}/#{type}/**/*.liquid.haml"]
+        directory = "#{Dir.pwd}/#{type}/"
         glob.each do |file|
           name = file.gsub(/#{directory}/i,"")
           code = IO.read(file).force_encoding('UTF-8')
-          @templates[directory] ||= {}
-          @templates[directory][name.to_s] = code
+          @templates[type] ||= {}
+          @templates[type][name.to_s] = code
         end
       end
 
