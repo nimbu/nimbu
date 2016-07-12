@@ -29,6 +29,8 @@ module Nimbu
       use Rack::StreamingProxy::Proxy do |request|
         if request.path.start_with?('/favicon.ico')
           "http://#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}/favicon.ico"
+        elsif Nimbu.cli_options[:webpack_url] && webpack_resource?(request.path)
+          "#{Nimbu.cli_options[:webpack_url]}#{request.path}"
         end
       end
 
@@ -187,6 +189,10 @@ module Nimbu
           @templates[type] ||= {}
           @templates[type][name.to_s] = code
         end
+      end
+
+      def self.webpack_resource?(path)
+        path =~ /\/javascripts\// && Nimbu.cli_options[:webpack_resources].include?(path.gsub("/javascripts/", ""))
       end
 
     end

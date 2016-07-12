@@ -12,11 +12,13 @@ class Nimbu::Command::Server < Nimbu::Command::Base
   #
   # starts a local development server, using the data from the Nimbu cloud in real time.
   #
-  # -p PORT, --port PORT  # set the port on which to start the http server
-  # -h,  --haml           # start local HAML watcher
-  # -c,  --compass        # start local Compass watcher
-  # -d,  --debug          # enable debugging output
-  # --nocookies           # disable session refresh cookie check
+  # -p PORT, --port PORT     # set the port on which to start the http server
+  # -h,  --haml              # start local HAML watcher
+  # -c,  --compass           # start local Compass watcher
+  # -d,  --debug             # enable debugging output
+  # --webpack RES            # comma separated list of webpack resources (relative to /javascripts)
+  # --webpackurl URL         # proxy requests for webpack resources to the given URL prefix (default: http://localhost:8080)
+  # --nocookies              # disable session refresh cookie check
   #
   def index
     # Check if config file is present?
@@ -27,9 +29,20 @@ class Nimbu::Command::Server < Nimbu::Command::Base
       with_haml    = options[:haml]
       with_compass = options[:compass] || options[:c]
       no_cookies   = options[:nocookies]
+      webpack_resources = options[:webpack]
+      webpack_url  = options[:webpackurl]
 
       if no_cookies
         Nimbu.cli_options[:nocookies] = true
+      end
+
+      if webpack_resources
+        Nimbu.cli_options[:webpack_resources] = webpack_resources.split(",").map(&:strip)
+        if webpack_url
+          Nimbu.cli_options[:webpack_url] = webpack_url
+        else
+          Nimbu.cli_options[:webpack_url] = "http://localhost:8080"
+        end
       end
 
       if with_compass
@@ -47,6 +60,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
       title = "Starting up Nimbu Server"
       title << " (with local #{services.join(' and ')} watcher)" if with_compass || with_haml
       title << " (skipping cookies check)" if no_cookies
+      title << " (proxying webpack resources to #{Nimbu.cli_options[:webpack_url]})" if webpack_resources
       title << " ..."
       puts white("\n#{title}")
       puts green(nimbu_header)
