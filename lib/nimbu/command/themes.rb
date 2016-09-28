@@ -117,7 +117,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
 
     if push_fonts
       if files_only
-        font_files = args.select{|file| file.start_with?("fonts", "")}.map{|file| file.gsub("fonts/", "")}
+        font_files = args.select{|file| file.start_with?("fonts")}.map{|file| file.gsub("fonts/", "")}
       else
         font_files = Dir.glob("#{Dir.pwd}/fonts/**/*").map {|dir| dir.gsub("#{Dir.pwd}/fonts/","")} rescue []
       end
@@ -135,7 +135,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
 
     if push_images
       if files_only
-        image_files = args.select{|file| file.start_with?("images", "")}.map{|file| file.gsub("images/", "")}
+        image_files = args.select{|file| file.start_with?("images")}.map{|file| file.gsub("images/", "")}
       else
         image_files = Dir.glob("#{Dir.pwd}/images/**/*").map {|dir| dir.gsub("#{Dir.pwd}/images/","")}
       end
@@ -171,7 +171,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
 
     if push_js
       if files_only
-        js_files = args.select{|file| file.start_with?("javascripts", "")}.map{|file| file.gsub("javascripts/", "")}
+        js_files = args.select{|file| file.start_with?("javascripts")}.map{|file| file.gsub("javascripts/", "")}
       else
         js_files = js_glob.map {|dir| dir.gsub("#{Dir.pwd}/javascripts/","")}
       end
