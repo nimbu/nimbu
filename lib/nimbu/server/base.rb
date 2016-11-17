@@ -78,6 +78,15 @@ module Nimbu
           }
         }
 
+        if request.env["rack.tempfiles"]
+          # inspect params for tempfiles and base64-encode them
+          request.env["rack.input"].rewind
+          params[:simulator][:multipart] = Base64.encode64(request.env["rack.input"].read)
+          request.env["rack.request.form_hash"] = convert_tempfiles(request.env["rack.request.form_hash"])
+          params[:simulator][:request][:headers] = request.env.to_json
+          params[:simulator][:request][:params] = convert_tempfiles(params[:simulator][:request][:params])
+        end
+
         # Send the templates to the browser
         begin
           results = nimbu.simulator(subdomain: Nimbu::Auth.site).render(params)
@@ -99,6 +108,25 @@ module Nimbu
       end
 
       protected
+
+      def convert_tempfiles(params)
+        params.update(params){|key,value| convert_single_value(value)}
+      end
+
+      def convert_single_value(value)
+        if value.is_a?(Array)
+          value.map { |item| convert_single_value(item) }
+        elsif value.is_a?(Hash)
+          convert_tempfiles(value)
+        elsif value.is_a?(Tempfile)
+          bytes = value.read
+          filename = Pathname.new(value.path).basename.to_s
+          value.rewind
+          {"__type" => "file", "data" => Base64.encode64(bytes), "filename" => filename}
+        else
+          value
+        end
+      end
 
       def detect_http_method(request)
         if request.get?       then "get"
