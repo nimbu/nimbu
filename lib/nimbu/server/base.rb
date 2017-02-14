@@ -34,7 +34,7 @@ module Nimbu
         end
       end
 
-      Rack::StreamingProxy::Proxy.logger = Logger.new("/dev/null")
+      Rack::StreamingProxy::Proxy.logger = Logger.new(File::NULL)
 
       # Your "actions" go here…
       #
