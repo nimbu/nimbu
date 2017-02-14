@@ -1,4 +1,4 @@
 # -*- encoding : utf-8 -*-
 module Nimbu
-  VERSION = "0.9.alpha.1"
+  VERSION = "0.9"
 end
