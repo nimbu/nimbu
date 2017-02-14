@@ -25,139 +25,196 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     if !Nimbu::Auth.read_configuration || !Nimbu::Auth.read_credentials
       print red(bold("ERROR")), ": this directory does not seem to contain any Nimbu theme or your credentials are not set. \n ==> Run \"", bold { "nimbu init"}, "\" to initialize this directory."
     else
-      no_compilation = true #! options[:'no-compile']
-      with_haml    = options[:haml]
-      with_compass = options[:compass] || options[:c]
-      no_cookies   = options[:nocookies]
-      webpack_resources = options[:webpack]
-      webpack_url  = options[:webpackurl]
+      @with_haml    = options[:haml]
+      @with_compass = options[:compass] || options[:c]
+      @no_cookies   = options[:nocookies]
+      @webpack_resources = options[:webpack]
+      @webpack_url  = options[:webpackurl]
 
-      if no_cookies
+      if @no_cookies
         Nimbu.cli_options[:nocookies] = true
       end
 
-      if webpack_resources
-        Nimbu.cli_options[:webpack_resources] = webpack_resources.split(",").map(&:strip)
-        if webpack_url
-          Nimbu.cli_options[:webpack_url] = webpack_url
+      if @webpack_resources
+        Nimbu.cli_options[:webpack_resources] = @webpack_resources.split(",").map(&:strip)
+        if @webpack_url
+          Nimbu.cli_options[:webpack_url] = @webpack_url
         else
           Nimbu.cli_options[:webpack_url] = "http://localhost:8080"
         end
       end
 
-      if with_compass
+      if @with_compass
         require 'compass'
         require 'compass/exec'
       end
 
-      if with_haml
+      if @with_haml
         require 'haml'
       end
 
       services = []
-      services << "HAML" if with_haml
-      services << "Compass" if with_compass
+      services << "HAML" if @with_haml
+      services << "Compass" if @with_compass
       title = "Starting up Nimbu Server"
-      title << " (with local #{services.join(' and ')} watcher)" if with_compass || with_haml
-      title << " (skipping cookies check)" if no_cookies
-      title << " (proxying webpack resources to #{Nimbu.cli_options[:webpack_url]})" if webpack_resources
+      title << " (with local #{services.join(' and ')} watcher)" if @with_compass || @with_haml
+      title << " (skipping cookies check)" if @no_cookies
+      title << " (proxying webpack resources to #{Nimbu.cli_options[:webpack_url]})" if @webpack_resources
       title << " ..."
       puts white("\n#{title}")
       puts green(nimbu_header)
       puts green("\nConnnected to '#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}', using '#{Nimbu::Auth.theme}' theme#{Nimbu.debug ? ' (in debug mode)'.red : nil}.\n")
 
-      server_read, server_write = IO::pipe
-      haml_read, haml_write = IO::pipe
-      compass_read, compass_write = IO::pipe
-      compiler_read, compiler_write = IO::pipe
-
-      server_pid = Process.fork do
-        $stdout.reopen(server_write)
-        server_read.close
-        puts "Starting server..."
-        server_options = {
-          :Port               => options[:port] || 4567,
-          :DocumentRoot       => Dir.pwd
-        }
-        Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
-          [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
-        end
+      if Nimbu::Helpers.running_on_windows?
+        run_on_windows!
+      else
+        run_on_unix!
       end
-
-      # assets_pid = Process.fork do
-      #   $stdout.reopen(compiler_write)
-      #   compiler_read.close
-      #   puts "Starting watcher..."
-      #   HamlWatcher.watch
-      # end unless no_compilation
-
-      haml_pid = Process.fork do
-        $stdout.reopen(haml_write)
-        haml_read.close
-        puts "Starting..."
-        haml_listener = HamlWatcher.watch
-        [:INT, :TERM].each do |sig|
-          Signal.trap(sig) do
-            puts green("== Stopping HAML watcher\n")
-            Thread.new { haml_listener.stop }
-          end
-        end
-        Process.waitall
-      end if with_haml
-
-      compass_pid = Process.fork do
-        $stdout.reopen(compass_write)
-        compass_read.close
-        puts "Starting..."
-        Compass::Exec::SubCommandUI.new(["watch","."]).run!
-      end if with_compass
-
-      watch_server_pid = Process.fork do
-        trap('INT') { exit }
-        server_write.close
-        server_read.each do |line|
-          print cyan("SERVER:  ") + white(line) + ""
-        end
-      end
-
-      # watch_assets_pid = Process.fork do
-      #   trap('INT') { exit }
-      #   compiler_write.close
-      #   compiler_read.each do |line|
-      #     print magenta("ASSETS:    ") + white(line) + ""
-      #   end
-      # end unless no_compilation
-
-      watch_haml_pid = Process.fork do
-        trap('INT') { exit }
-        haml_write.close
-        haml_read.each do |line|
-          print magenta("HAML:    ") + white(line) + ""
-        end
-      end if with_haml
-
-      watch_compass_pid = Process.fork do
-        trap('INT') { exit }
-        compass_write.close
-        compass_read.each do |line|
-          print yellow("COMPASS: ") + white(line) + ""
-        end
-      end if with_compass
-
-      [:INT, :TERM].each do |sig|
-        trap(sig) do
-          puts yellow("\n== Waiting for all processes to finish...")
-          Process.kill('INT', haml_pid) if haml_pid && running?(haml_pid)
-          Process.waitall
-          puts green("== Nimbu has ended its work " + bold("(crowd applauds!)\n"))
-        end
-      end
-
-      Process.waitall
     end
   end
 
+  def bare
+    puts "Starting server..."
+    server_options = {
+      :Port               => options[:port] || 4567,
+      :DocumentRoot       => Dir.pwd
+    }
+    Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
+      [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
+    end
+  end
+
+  def haml
+    require 'haml'
+    puts "Starting..."
+    haml_listener = HamlWatcher.watch
+    sleep
+  end
+
+  def compass
+    require 'compass'
+    require 'compass/exec'
+    Compass::Exec::SubCommandUI.new(["watch","."]).run!
+  end
+
   protected
+
+  def run_on_windows!
+    server_thread = Thread.new do
+    Thread.current[:stdout] = StringIO.new
+      puts "Starting server..."
+      server_options = {
+        :Port               => options[:port] || 4567,
+        :DocumentRoot       => Dir.pwd
+      }
+      Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
+        [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
+      end
+    end
+
+    haml_thread = Thread.new do
+      # $stdout.reopen(compiler_write)
+      # compiler_read.close
+      puts "Starting watcher..."
+      HamlWatcher.watch
+    end if @with_haml
+
+    if @with_compass
+      puts "Starting..."
+      cmd = "bundle exec nimbu server:compass"
+      compass_pid = Process.spawn(cmd, out: $stdout, err: [:child, :out])
+    end
+
+    server_thread.join
+    haml_thread.join if @with_haml
+
+    [:INT, :TERM].each do |sig|
+      trap(sig) do
+        puts yellow("\n== Waiting for all processes to finish...")
+        Process.kill('INT', compass_pid) if compass_pid && running?(compass_pid)
+        Process.waitall
+        puts green("== Nimbu has ended its work " + bold("(crowd applauds!)\n"))
+      end
+    end
+
+    Process.waitall
+  end
+
+  def run_on_unix!
+    server_read, server_write = IO::pipe
+    haml_read, haml_write = IO::pipe
+    compass_read, compass_write = IO::pipe
+    compiler_read, compiler_write = IO::pipe
+
+    server_pid = Process.fork do
+      $stdout.reopen(server_write)
+      server_read.close
+      puts "Starting server..."
+      server_options = {
+        :Port               => options[:port] || 4567,
+        :DocumentRoot       => Dir.pwd
+      }
+      Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
+        [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
+      end
+    end
+
+    haml_pid = Process.fork do
+      $stdout.reopen(haml_write)
+      haml_read.close
+      puts "Starting..."
+      haml_listener = HamlWatcher.watch
+      [:INT, :TERM].each do |sig|
+        Signal.trap(sig) do
+          puts green("== Stopping HAML watcher\n")
+          Thread.new { haml_listener.stop }
+        end
+      end
+      Process.waitall
+    end if @with_haml
+
+    compass_pid = Process.fork do
+      $stdout.reopen(compass_write)
+      compass_read.close
+      puts "Starting..."
+      Compass::Exec::SubCommandUI.new(["watch","."]).run!
+    end if @with_compass
+
+    watch_server_pid = Process.fork do
+      trap('INT') { exit }
+      server_write.close
+      server_read.each do |line|
+        print cyan("SERVER:  ") + white(line) + ""
+      end
+    end
+
+    watch_haml_pid = Process.fork do
+      trap('INT') { exit }
+      haml_write.close
+      haml_read.each do |line|
+        print magenta("HAML:    ") + white(line) + ""
+      end
+    end if @with_haml
+
+    watch_compass_pid = Process.fork do
+      trap('INT') { exit }
+      compass_write.close
+      compass_read.each do |line|
+        print yellow("COMPASS: ") + white(line) + ""
+      end
+    end if @with_compass
+
+    [:INT, :TERM].each do |sig|
+      trap(sig) do
+        puts yellow("\n== Waiting for all processes to finish...")
+        Process.kill('INT', haml_pid) if haml_pid && running?(haml_pid)
+        Process.waitall
+        puts green("== Nimbu has ended its work " + bold("(crowd applauds!)\n"))
+      end
+    end
+
+    Process.waitall
+  end
 
   def nimbu_header
     h = ""
@@ -182,7 +239,6 @@ end
 
 require 'rubygems'
 require 'listen'
-require 'haml'
 
 class HamlWatcher
   class << self

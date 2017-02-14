@@ -248,7 +248,7 @@ class Nimbu::Auth
       char = nil
       password = ''
 
-      while char = Win32API.new("crtdll", "_getch", [ ], "L").Call do
+      while char = Win32API.new("msvcrt", "_getch", [ ], "L").Call do
         break if char == 10 || char == 13 # received carriage return or newline
         if char == 127 || char == 8 # backspace and delete
           password.slice!(-1, 1)

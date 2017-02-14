@@ -26,15 +26,17 @@ module Nimbu
       set :views,  File.expand_path('../views', __FILE__) # set up the views dir
       set :haml, { format: :html5 }                    # if you use haml
 
-      use Rack::StreamingProxy::Proxy do |request|
-        if request.path.start_with?('/favicon.ico')
-          "http://#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}/favicon.ico"
-        elsif Nimbu.cli_options[:webpack_url] && webpack_resource?(request.path)
-          "#{Nimbu.cli_options[:webpack_url]}#{request.path}"
+      unless Nimbu::Helpers.running_on_windows?
+        use Rack::StreamingProxy::Proxy do |request|
+          if request.path.start_with?('/favicon.ico')
+            "http://#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}/favicon.ico"
+          elsif Nimbu.cli_options[:webpack_url] && webpack_resource?(request.path)
+            "#{Nimbu.cli_options[:webpack_url]}#{request.path}"
+          end
         end
-      end
 
-      Rack::StreamingProxy::Proxy.logger = Logger.new(File::NULL)
+        Rack::StreamingProxy::Proxy.logger = Logger.new(File::NULL)
+      end
 
       # Your "actions" go here…
       #
