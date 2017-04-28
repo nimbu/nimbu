@@ -13,6 +13,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
   # starts a local development server, using the data from the Nimbu cloud in real time.
   #
   # -p PORT, --port PORT     # set the port on which to start the http server
+  # --host HOST              # set the host on which to start the http server
   # -h,  --haml              # start local HAML watcher
   # -c,  --compass           # start local Compass watcher
   # -d,  --debug             # enable debugging output
@@ -107,6 +108,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
         :Port               => options[:port] || 4567,
         :DocumentRoot       => Dir.pwd
       }
+      server_options.merge!({:Host => options[:host]}) if options[:host]
       Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
         [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
       end
@@ -154,6 +156,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
         :Port               => options[:port] || 4567,
         :DocumentRoot       => Dir.pwd
       }
+      server_options.merge!({:Host => options[:host]}) if options[:host]
       Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
         [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
       end
