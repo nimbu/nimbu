@@ -290,7 +290,7 @@ class HamlWatcher
       begin
         output_file_name = output_file(file)
         origin = File.open(File.join('haml', file)).read
-        result = Haml::Engine.new(origin).render
+        result = Haml::Engine.new(origin, {escape_attrs: false}).render
         raise "Nothing rendered!" if result.empty?
         # Write rendered HTML to file
         color, action = File.exist?(output_file_name) ? [33, 'overwrite'] : [32, '   create']
