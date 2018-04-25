@@ -30,6 +30,8 @@ module Nimbu
         use Rack::StreamingProxy::Proxy do |request|
           if request.path.start_with?('/favicon.ico')
             "http://#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}/favicon.ico"
+          elsif private_file?(request)
+            "http://#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}#{request.path}?#{request.query_string}"
           elsif Nimbu.cli_options[:webpack_url] && webpack_resource?(request.path)
             "#{Nimbu.cli_options[:webpack_url]}#{request.path}"
           end
@@ -223,6 +225,10 @@ module Nimbu
 
       def self.webpack_resource?(path)
         path =~ /\/javascripts\// && Nimbu.cli_options[:webpack_resources].include?(path.gsub("/javascripts/", ""))
+      end
+
+      def self.private_file?(request)
+        request.path =~ /^\/downloads\// && request.query_string =~ /key=/
       end
 
     end
