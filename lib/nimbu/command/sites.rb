@@ -17,8 +17,6 @@ class Nimbu::Command::Sites < Nimbu::Command::Base
       end
     else
       display "You don't have access to any Nimbu sites."
-      display ""
-      display "Visit http://nimbu.io, start your 30-day trial and discover our amazing platform!"
     end
   end
 

@@ -21,6 +21,8 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     end
     puts ""
     puts "Currently this directory is configured for '#{Nimbu::Auth.theme.red.bold}'"
+  rescue ::Nimbu::Error::Forbidden
+    Nimbu::Auth.invalid_access!
   end
 
   # themes:list
@@ -63,6 +65,8 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         display " - #{a["folder"]}/#{a["name"]}"
       end
     end
+  rescue ::Nimbu::Error::Forbidden
+    Nimbu::Auth.invalid_access!
   end
 
   # themes
@@ -81,6 +85,8 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
     display "\nShowing differences between local and server\nlayouts, templates, snippets and assets for '#{theme.green.bold}':"
     json = nimbu.themes(:subdomain => Nimbu::Auth.site).get(theme)
     check_differences(json, theme, "layouts", "templates", "snippets")
+  rescue ::Nimbu::Error::Forbidden
+    Nimbu::Auth.invalid_access!
   end
 
   # themes:push
@@ -227,7 +233,8 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         print " (ok)\n"
       end
     end
-
+  rescue ::Nimbu::Error::Forbidden
+    Nimbu::Auth.invalid_access!
   end
 
   private

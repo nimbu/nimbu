@@ -110,8 +110,11 @@ module Nimbu
             headers encoded_headers
           end
           body Base64.decode64(results["body"])
+        rescue ::Nimbu::Error::Forbidden
+          Nimbu::Auth.invalid_access!
+          Nimbu::Auth.invalid_access_message
         rescue Exception => error
-          puts error if Nimbu.debug
+          puts error.message if Nimbu.debug
           puts "Error! #{error.http_body if error.respond_to?(:http_body)}"
           error.http_body
         end
