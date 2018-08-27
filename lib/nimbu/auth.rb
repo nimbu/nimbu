@@ -2,6 +2,7 @@
 require "yaml"
 require "nimbu"
 require "nimbu/helpers"
+require 'term/ansicolor'
 
 class Nimbu::Auth
   class << self
@@ -296,6 +297,15 @@ class Nimbu::Auth
       print "\n"
       60.times { print "#"}
       print "\n"
+    end
+
+    def invalid_access!
+      puts invalid_access_message.bold.red
+    end
+
+    def invalid_access_message
+      "Error! You do not have access to #{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}! " +
+               "Please check your site id or request access to your site owner."
     end
   end
 end
