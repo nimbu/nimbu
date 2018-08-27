@@ -38,6 +38,7 @@ module Nimbu
         end
 
         Rack::StreamingProxy::Proxy.logger = Logger.new(File::NULL)
+        # Rack::StreamingProxy::Proxy.log_verbosity = :high
       end
 
       # Your "actions" go here…
@@ -99,10 +100,19 @@ module Nimbu
           puts Base64.decode64(results["body"]).gsub(/\n/,'') if Nimbu.debug
 
           status results["status"]
-          headers results["headers"] unless results["headers"] == ""
+          if results["headers"] && results["headers"] != ""
+            # force ASCII encoding on the headers that where transported over UTF-8 JSON
+            # see: https://stackoverflow.com/questions/4400678/what-character-encoding-should-i-use-for-a-http-header
+            encoded_headers = {}
+            results["headers"].each do |k,v|
+              encoded_headers[k] = v.force_encoding("ASCII-8BIT")
+            end
+            headers encoded_headers
+          end
           body Base64.decode64(results["body"])
         rescue Exception => error
-          puts "Error! #{error.http_body}"
+          puts error if Nimbu.debug
+          puts "Error! #{error.http_body if error.respond_to?(:http_body)}"
           error.http_body
         end
       end
