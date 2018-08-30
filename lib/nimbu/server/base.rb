@@ -9,6 +9,7 @@ require "base64"
 require "sinatra/json"
 require 'json'
 require 'rack/streaming_proxy'
+require 'nimbu/server/headers'
 
 module Nimbu
   module Server
@@ -25,6 +26,8 @@ module Nimbu
 
       set :views,  File.expand_path('../views', __FILE__) # set up the views dir
       set :haml, { format: :html5 }                    # if you use haml
+
+      use Nimbu::Server::Headers
 
       unless Nimbu::Helpers.running_on_windows?
         use Rack::StreamingProxy::Proxy do |request|
