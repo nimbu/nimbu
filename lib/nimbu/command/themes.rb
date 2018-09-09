@@ -138,6 +138,10 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "fonts/#{font}", :file => io})
         print " - fonts/#{font}"
         print " (ok)\n"
+      rescue Nimbu::Error::Conflict => error
+        handle_conflict(error, font) do
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "fonts/#{font}", :file => io, force: "true"})
+        end  
       end
     end
 
@@ -156,6 +160,10 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "images/#{image}", :file => io})
         print " - images/#{image}"
         print " (ok)\n"
+      rescue Nimbu::Error::Conflict => error
+        handle_conflict(error, image) do
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "images/#{image}", :file => io, force: "true"})
+        end  
       end
     end
 
@@ -174,6 +182,10 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "stylesheets/#{css}", :file => io})
         print " - stylesheets/#{css}"
         print " (ok)\n"
+      rescue Nimbu::Error::Conflict => error
+        handle_conflict(error, css) do
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "stylesheets/#{css}", :file => io, force: "true"})
+        end  
       end
     end
 
@@ -192,6 +204,10 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "javascripts/#{js}", :file => io})
         print " - javascripts/#{js}"
         print " (ok)\n"
+      rescue Nimbu::Error::Conflict => error
+        handle_conflict(error, js) do
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "javascripts/#{js}", :file => io, force: "true"})
+        end  
       end
     end
 
@@ -213,6 +229,10 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         print " - snippets/#{snippet}"
         nimbu.themes(:subdomain => Nimbu::Auth.site).snippets(:theme_id => theme).create({:name => snippet, :content => IO.read(file).force_encoding('UTF-8')})
         print " (ok)\n"
+      rescue Nimbu::Error::Conflict => error
+        handle_conflict(error, snippet) do
+          nimbu.themes(:subdomain => Nimbu::Auth.site).snippets(:theme_id => theme).create({:name => snippet, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
+        end  
       end
 
       print "\nLayouts:\n"
@@ -222,6 +242,10 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         print " - layouts/#{layout}"
         nimbu.themes(:subdomain => Nimbu::Auth.site).layouts(:theme_id => theme).create({:name => layout, :content => IO.read(file).force_encoding('UTF-8')})
         print " (ok)\n"
+      rescue Nimbu::Error::Conflict => error
+        handle_conflict(error, layout) do
+          nimbu.themes(:subdomain => Nimbu::Auth.site).layouts(:theme_id => theme).create({:name => layout, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
+        end
       end
 
       print "\nTemplates:\n"
@@ -231,6 +255,10 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         print " - templates/#{template}"
         nimbu.themes(:subdomain => Nimbu::Auth.site).templates(:theme_id => theme).create({:name => template, :content => IO.read(file).force_encoding('UTF-8')})
         print " (ok)\n"
+      rescue Nimbu::Error::Conflict => error
+        handle_conflict(error, template) do
+          nimbu.themes(:subdomain => Nimbu::Auth.site).templates(:theme_id => theme).create({:name => template, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
+        end  
       end
     end
   rescue ::Nimbu::Error::Forbidden
@@ -238,6 +266,21 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
   end
 
   private
+
+  def handle_conflict(error, filename, &block)
+    if error.message =~ /Conflict \((.*)\)/
+      puts " => WARNING!! #{$1}".red
+      if confirm("    Do you want to overwrite these changes? (y/n)")
+        print "     -> Forcing upload of #{filename}".green
+        yield
+        print ": (ok)\n"
+      else
+        puts "     -> Ok, skipping upload of #{filename}".yellow
+      end
+    else
+      puts " could not be updated".red
+    end
+  end
 
   def check_differences(contents, theme, *types)
     types.each do |type|
