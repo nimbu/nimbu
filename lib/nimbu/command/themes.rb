@@ -132,16 +132,18 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
 
       print "\nFonts:\n"
       font_files.each do |font|
-        file = "#{Dir.pwd}/fonts/#{font}"
-        next if !force && (File.directory?(file) || (!anyFileWithWord?(css_glob,font) && !anyFileWithWord?(js_glob,font) && !anyFileWithWord?(layouts_glob,font) && !anyFileWithWord?(templates_glob,font) && !anyFileWithWord?(snippets_glob,font)))
-        io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
-        nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "fonts/#{font}", :file => io})
-        print " - fonts/#{font}"
-        print " (ok)\n"
-      rescue Nimbu::Error::Conflict => error
-        handle_conflict(error, font) do
-          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "fonts/#{font}", :file => io, force: "true"})
-        end  
+        begin
+          file = "#{Dir.pwd}/fonts/#{font}"
+          next if !force && (File.directory?(file) || (!anyFileWithWord?(css_glob,font) && !anyFileWithWord?(js_glob,font) && !anyFileWithWord?(layouts_glob,font) && !anyFileWithWord?(templates_glob,font) && !anyFileWithWord?(snippets_glob,font)))
+          io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "fonts/#{font}", :file => io})
+          print " - fonts/#{font}"
+          print " (ok)\n"
+        rescue Nimbu::Error::Conflict => error
+          handle_conflict(error, font) do
+            nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "fonts/#{font}", :file => io, force: "true"})
+          end  
+        end
       end
     end
 
@@ -154,16 +156,18 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
 
       print "\nImages:\n"
       image_files.each do |image|
-        file = "#{Dir.pwd}/images/#{image}"
-        next if !force && (File.directory?(file) || (!anyFileWithWord?(css_glob,image) && !anyFileWithWord?(js_glob,image) && !anyFileWithWord?(layouts_glob,image) && !anyFileWithWord?(templates_glob,image) && !anyFileWithWord?(snippets_glob,image)))
-        io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
-        nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "images/#{image}", :file => io})
-        print " - images/#{image}"
-        print " (ok)\n"
-      rescue Nimbu::Error::Conflict => error
-        handle_conflict(error, image) do
-          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "images/#{image}", :file => io, force: "true"})
-        end  
+        begin
+          file = "#{Dir.pwd}/images/#{image}"
+          next if !force && (File.directory?(file) || (!anyFileWithWord?(css_glob,image) && !anyFileWithWord?(js_glob,image) && !anyFileWithWord?(layouts_glob,image) && !anyFileWithWord?(templates_glob,image) && !anyFileWithWord?(snippets_glob,image)))
+          io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "images/#{image}", :file => io})
+          print " - images/#{image}"
+          print " (ok)\n"
+        rescue Nimbu::Error::Conflict => error
+          handle_conflict(error, image) do
+            nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "images/#{image}", :file => io, force: "true"})
+          end  
+        end
       end
     end
 
@@ -176,16 +180,18 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
 
       print "\nStylesheets:\n"
       css_files.each do |css|
-        file = "#{Dir.pwd}/stylesheets/#{css}"
-        next if !force && (File.directory?(file) || (!anyFileWithWord?(layouts_glob,css) && !anyFileWithWord?(templates_glob,css) && !anyFileWithWord?(snippets_glob,css)))
-        io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
-        nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "stylesheets/#{css}", :file => io})
-        print " - stylesheets/#{css}"
-        print " (ok)\n"
-      rescue Nimbu::Error::Conflict => error
-        handle_conflict(error, css) do
-          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "stylesheets/#{css}", :file => io, force: "true"})
-        end  
+        begin
+          file = "#{Dir.pwd}/stylesheets/#{css}"
+          next if !force && (File.directory?(file) || (!anyFileWithWord?(layouts_glob,css) && !anyFileWithWord?(templates_glob,css) && !anyFileWithWord?(snippets_glob,css)))
+          io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "stylesheets/#{css}", :file => io})
+          print " - stylesheets/#{css}"
+          print " (ok)\n"
+        rescue Nimbu::Error::Conflict => error
+          handle_conflict(error, css) do
+            nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "stylesheets/#{css}", :file => io, force: "true"})
+          end  
+        end
       end
     end
 
@@ -198,16 +204,18 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
 
       print "\nJavascripts:\n"
       js_files.each do |js|
-        file = "#{Dir.pwd}/javascripts/#{js}"
-        next if !force && (File.directory?(file) || (!anyFileWithWord?(layouts_glob,js) && !anyFileWithWord?(templates_glob,js) && !anyFileWithWord?(snippets_glob,js)))
-        io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
-        nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "javascripts/#{js}", :file => io})
-        print " - javascripts/#{js}"
-        print " (ok)\n"
-      rescue Nimbu::Error::Conflict => error
-        handle_conflict(error, js) do
-          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "javascripts/#{js}", :file => io, force: "true"})
-        end  
+        begin
+          file = "#{Dir.pwd}/javascripts/#{js}"
+          next if !force && (File.directory?(file) || (!anyFileWithWord?(layouts_glob,js) && !anyFileWithWord?(templates_glob,js) && !anyFileWithWord?(snippets_glob,js)))
+          io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
+          nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "javascripts/#{js}", :file => io})
+          print " - javascripts/#{js}"
+          print " (ok)\n"
+        rescue Nimbu::Error::Conflict => error
+          handle_conflict(error, js) do
+            nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "javascripts/#{js}", :file => io, force: "true"})
+          end  
+        end
       end
     end
 
@@ -224,41 +232,47 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
 
       print "\nSnippets:\n"
       snippets_files.each do |snippet|
-        file = "#{Dir.pwd}/snippets/#{snippet}"
-        next if !force && (File.directory?(file))
-        print " - snippets/#{snippet}"
-        nimbu.themes(:subdomain => Nimbu::Auth.site).snippets(:theme_id => theme).create({:name => snippet, :content => IO.read(file).force_encoding('UTF-8')})
-        print " (ok)\n"
-      rescue Nimbu::Error::Conflict => error
-        handle_conflict(error, snippet) do
-          nimbu.themes(:subdomain => Nimbu::Auth.site).snippets(:theme_id => theme).create({:name => snippet, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
-        end  
+        begin
+          file = "#{Dir.pwd}/snippets/#{snippet}"
+          next if !force && (File.directory?(file))
+          print " - snippets/#{snippet}"
+          nimbu.themes(:subdomain => Nimbu::Auth.site).snippets(:theme_id => theme).create({:name => snippet, :content => IO.read(file).force_encoding('UTF-8')})
+          print " (ok)\n"
+        rescue Nimbu::Error::Conflict => error
+          handle_conflict(error, snippet) do
+            nimbu.themes(:subdomain => Nimbu::Auth.site).snippets(:theme_id => theme).create({:name => snippet, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
+          end  
+        end
       end
 
       print "\nLayouts:\n"
       layouts_files.each do |layout|
-        file = "#{Dir.pwd}/layouts/#{layout}"
-        next if !force && (File.directory?(file))
-        print " - layouts/#{layout}"
-        nimbu.themes(:subdomain => Nimbu::Auth.site).layouts(:theme_id => theme).create({:name => layout, :content => IO.read(file).force_encoding('UTF-8')})
-        print " (ok)\n"
-      rescue Nimbu::Error::Conflict => error
-        handle_conflict(error, layout) do
-          nimbu.themes(:subdomain => Nimbu::Auth.site).layouts(:theme_id => theme).create({:name => layout, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
+        begin
+          file = "#{Dir.pwd}/layouts/#{layout}"
+          next if !force && (File.directory?(file))
+          print " - layouts/#{layout}"
+          nimbu.themes(:subdomain => Nimbu::Auth.site).layouts(:theme_id => theme).create({:name => layout, :content => IO.read(file).force_encoding('UTF-8')})
+          print " (ok)\n"
+        rescue Nimbu::Error::Conflict => error
+          handle_conflict(error, layout) do
+            nimbu.themes(:subdomain => Nimbu::Auth.site).layouts(:theme_id => theme).create({:name => layout, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
+          end
         end
       end
 
       print "\nTemplates:\n"
       templates_files.each do |template|
-        file = "#{Dir.pwd}/templates/#{template}"
-        next if !force && (File.directory?(file))
-        print " - templates/#{template}"
-        nimbu.themes(:subdomain => Nimbu::Auth.site).templates(:theme_id => theme).create({:name => template, :content => IO.read(file).force_encoding('UTF-8')})
-        print " (ok)\n"
-      rescue Nimbu::Error::Conflict => error
-        handle_conflict(error, template) do
-          nimbu.themes(:subdomain => Nimbu::Auth.site).templates(:theme_id => theme).create({:name => template, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
-        end  
+        begin
+          file = "#{Dir.pwd}/templates/#{template}"
+          next if !force && (File.directory?(file))
+          print " - templates/#{template}"
+          nimbu.themes(:subdomain => Nimbu::Auth.site).templates(:theme_id => theme).create({:name => template, :content => IO.read(file).force_encoding('UTF-8')})
+          print " (ok)\n"
+        rescue Nimbu::Error::Conflict => error
+          handle_conflict(error, template) do
+            nimbu.themes(:subdomain => Nimbu::Auth.site).templates(:theme_id => theme).create({:name => template, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
+          end  
+        end
       end
     end
   rescue ::Nimbu::Error::Forbidden
