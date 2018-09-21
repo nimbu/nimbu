@@ -143,6 +143,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
   end
 
   def run_on_unix!
+    STDOUT.sync = true
     server_read, server_write = IO::pipe
     haml_read, haml_write = IO::pipe
     compass_read, compass_write = IO::pipe
