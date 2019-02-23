@@ -142,7 +142,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         rescue Nimbu::Error::Conflict => error
           handle_conflict(error, font) do
             nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "fonts/#{font}", :file => io, force: "true"})
-          end  
+          end
         end
       end
     end
@@ -166,7 +166,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         rescue Nimbu::Error::Conflict => error
           handle_conflict(error, image) do
             nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "images/#{image}", :file => io, force: "true"})
-          end  
+          end
         end
       end
     end
@@ -189,8 +189,9 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
           print " (ok)\n"
         rescue Nimbu::Error::Conflict => error
           handle_conflict(error, css) do
+            io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
             nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "stylesheets/#{css}", :file => io, force: "true"})
-          end  
+          end
         end
       end
     end
@@ -213,8 +214,9 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
           print " (ok)\n"
         rescue Nimbu::Error::Conflict => error
           handle_conflict(error, js) do
+            io = Faraday::UploadIO.new(File.open(file), 'application/octet-stream', File.basename(file))
             nimbu.themes(:subdomain => Nimbu::Auth.site).assets(:theme_id => theme).create({:name => "javascripts/#{js}", :file => io, force: "true"})
-          end  
+          end
         end
       end
     end
@@ -241,7 +243,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         rescue Nimbu::Error::Conflict => error
           handle_conflict(error, snippet) do
             nimbu.themes(:subdomain => Nimbu::Auth.site).snippets(:theme_id => theme).create({:name => snippet, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
-          end  
+          end
         end
       end
 
@@ -271,7 +273,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
         rescue Nimbu::Error::Conflict => error
           handle_conflict(error, template) do
             nimbu.themes(:subdomain => Nimbu::Auth.site).templates(:theme_id => theme).create({:name => template, :content => IO.read(file).force_encoding('UTF-8'), force: "true"})
-          end  
+          end
         end
       end
     end
@@ -315,7 +317,7 @@ class Nimbu::Command::Themes < Nimbu::Command::Base
       server = json["code"].to_s.force_encoding('UTF-8').gsub(/\r\n?/, "\n").strip
       diff = Diffy::Diff.new(local, server, :include_diff_info => true, :context => 3).to_s(:color).strip
       if diff != ""
-        print "\n - #{type}/#{data["name"]} has #{'changed'.yellow.bold }:\n\n#{diff}" 
+        print "\n - #{type}/#{data["name"]} has #{'changed'.yellow.bold }:\n\n#{diff}"
         @diff[type] = true
       end
     else
