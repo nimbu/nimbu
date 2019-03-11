@@ -242,7 +242,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
 end
 
 require 'rubygems'
-require 'listen'
+require 'fssm'
 
 class HamlWatcher
   class << self
@@ -251,29 +251,20 @@ class HamlWatcher
     def watch
       refresh
       puts ">>> Haml is polling for changes. Press Ctrl-C to Stop."
-      listener = Listen.to('haml')
-      listener.relative_paths(true)
-      listener.filter(/\.haml$/)
-      modifier = lambda do |modified, added, removed|
-        puts modified.inspect
-        modified.each do |relative|
+      FSSM.monitor('haml', '**/*.haml') do
+        update do |base, relative|
           puts ">>> Change detected to: #{relative}"
           HamlWatcher.compile(relative)
-        end if modified
-
-        added.each do |relative|
-          puts ">>> File created: #{relative}"
-          HamlWatcher.compile(relative)
-        end if added
-
-        removed.each do |relative|
+        end
+        delete do |base, relative|
           puts ">>> File deleted: #{relative}"
           HamlWatcher.remove(relative)
-        end if removed
+        end
+        create do |base, relative|
+          puts ">>> File created: #{relative}"
+          HamlWatcher.compile(relative)
+        end
       end
-      listener.change(&modifier)
-      listener.start
-      listener
     end
 
     def output_file(filename)
