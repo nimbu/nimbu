@@ -45,6 +45,17 @@ class Nimbu::Command::Auth < Nimbu::Command::Base
 
   alias_command "logout", "auth:logout"
 
+  # auth:whoami
+  #
+  # check the identity linked to your token
+  #
+  def whoami
+    results = Nimbu::Auth.whoami
+    display " => Logged in as: #{results[:name]} (#{results[:email]})"
+  end
+  alias_command "whoami", "auth:whoami"
+
+
   # auth:token
   #
   # display your api token
@@ -54,4 +65,3 @@ class Nimbu::Command::Auth < Nimbu::Command::Base
   end
 
 end
-

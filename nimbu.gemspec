@@ -13,11 +13,10 @@ Gem::Specification.new do |s|
 
   s.files = %x{ git ls-files }.split("\n").select { |d| d =~ %r{^(README|bin/|data/|ext/|lib/|spec/|test/)} }
   s.executables = "nimbu"
-  s.default_executable = "nimbu"
 
   # specify any dependencies here; for example:
   s.add_dependency "term-ansicolor", "~> 1.0.5"
-  s.add_dependency "nimbu-api", "~> 0.4.3"
+  s.add_dependency "nimbu-api", "~> 0.4.4"
   s.add_dependency "rubyzip"
   s.add_dependency "sinatra", "~> 2.0.2"
   s.add_dependency "sinatra-contrib"

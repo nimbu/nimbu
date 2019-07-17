@@ -37,6 +37,10 @@ class Nimbu::Auth
       delete_credentials
     end
 
+    def whoami
+      client.users.me
+    end
+
     # just a stub; will raise if not authenticated
     def check
       client.sites.list
@@ -172,7 +176,7 @@ class Nimbu::Auth
     end
 
     def token    # :nodoc:
-      get_credentials
+      ENV['NIMBU_API_KEY'] || get_credentials
     end
 
     def credentials_file
