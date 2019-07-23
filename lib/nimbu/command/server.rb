@@ -23,8 +23,10 @@ class Nimbu::Command::Server < Nimbu::Command::Base
   #
   def index
     # Check if config file is present?
-    if !Nimbu::Auth.read_configuration || !Nimbu::Auth.read_credentials
-      print red(bold("ERROR")), ": this directory does not seem to contain any Nimbu theme or your credentials are not set. \n ==> Run \"", bold { "nimbu init"}, "\" to initialize this directory."
+    if !Nimbu::Auth.read_configuration
+      print red(bold("ERROR")), ": this directory does not seem to contain any Nimbu theme configuration. \n ==> Run \"", bold { "nimbu init"}, "\" to initialize this directory."
+    elsif Nimbu::Auth.token.nil?
+      print red(bold("ERROR")), ": it seems you are not authenticated. \n ==> Run \"", bold { "nimbu login"}, "\" to initialize a session."
     else
       @with_haml    = options[:haml]
       @with_compass = options[:compass] || options[:c]
