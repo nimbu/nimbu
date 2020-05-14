@@ -244,7 +244,8 @@ class Nimbu::Command::Server < Nimbu::Command::Base
 end
 
 require 'rubygems'
-require 'fssm'
+require 'filewatcher'
+require 'pathname'
 
 class HamlWatcher
   class << self
@@ -252,19 +253,25 @@ class HamlWatcher
 
     def watch
       refresh
+      current_dir = File.join(Dir.pwd, 'haml/')
       puts ">>> Haml is polling for changes. Press Ctrl-C to Stop."
-      FSSM.monitor('haml', '**/*.haml') do
-        update do |base, relative|
-          puts ">>> Change detected to: #{relative}"
-          HamlWatcher.compile(relative)
-        end
-        delete do |base, relative|
-          puts ">>> File deleted: #{relative}"
-          HamlWatcher.remove(relative)
-        end
-        create do |base, relative|
-          puts ">>> File created: #{relative}"
-          HamlWatcher.compile(relative)
+      Filewatcher.new('haml/**/*.haml', every: true).watch do |filename, event|
+        begin
+          relative = filename.to_s.gsub(current_dir, '')
+
+          case event.to_s
+          when 'updated'
+            puts ">>> Change detected to: #{relative}"
+            HamlWatcher.compile(relative)
+          when 'deleted'
+            puts ">>> File deleted: #{relative}"
+            HamlWatcher.remove(relative)
+          when 'created'
+            puts ">>> File created: #{relative}"
+            HamlWatcher.compile(relative)
+          end
+        rescue => e
+          puts "#{e.inspect}"
         end
       end
     end
