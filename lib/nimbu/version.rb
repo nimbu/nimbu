@@ -1,4 +1,5 @@
-# -*- encoding : utf-8 -*-
+# frozen_string_literal: true
+
 module Nimbu
-  VERSION = "0.11.8"
+  VERSION = '0.11.9'
 end
