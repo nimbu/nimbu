@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module Nimbu
-  VERSION = '0.11.9'
+  VERSION = '0.12.0'.freeze
 end

@@ -28,6 +28,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'json'
   s.add_dependency 'diffy'
   s.add_dependency 'wdm'
+  s.add_dependency 'netrc'
   s.add_dependency 'filewatcher'
 
   s.add_development_dependency 'bundler', '~> 1.3'

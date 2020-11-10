@@ -1,6 +1,4 @@
-# -*- encoding : utf-8 -*-
-require "nimbu/version"
-require "nimbu-api"
+require 'nimbu-api'
 
 module Nimbu
   def self.debug=(value)

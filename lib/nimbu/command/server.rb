@@ -1,8 +1,5 @@
 # -*- encoding : utf-8 -*-
 require "nimbu/command/base"
-require "nimbu/server/base"
-require 'term/ansicolor'
-require 'thin'
 
 # running a local server to speed up designing Nimbu themes
 #
@@ -22,6 +19,13 @@ class Nimbu::Command::Server < Nimbu::Command::Base
   # --nocookies              # disable session refresh cookie check
   #
   def index
+    require 'rubygems'
+    require "nimbu/server/base"
+    require 'term/ansicolor'
+    require 'thin'
+    require 'filewatcher'
+    require 'pathname'
+
     # Check if config file is present?
     if !Nimbu::Auth.read_configuration
       print red(bold("ERROR")), ": this directory does not seem to contain any Nimbu theme configuration. \n ==> Run \"", bold { "nimbu init"}, "\" to initialize this directory."
@@ -242,10 +246,6 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     end
   end
 end
-
-require 'rubygems'
-require 'filewatcher'
-require 'pathname'
 
 class HamlWatcher
   class << self

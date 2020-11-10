@@ -1,8 +1,7 @@
-# -*- encoding : utf-8 -*-
 require 'nimbu/helpers'
 require 'nimbu/version'
 require 'term/ansicolor'
-require "optparse"
+require 'optparse'
 
 class String
   include Term::ANSIColor
@@ -10,12 +9,12 @@ end
 
 module Nimbu
   module Command
-    class CommandFailed  < RuntimeError; end
+    class CommandFailed < RuntimeError; end
 
     extend Nimbu::Helpers
 
     def self.load
-      Dir[File.join(File.dirname(__FILE__), "command", "*.rb")].each do |file|
+      Dir[File.join(File.dirname(__FILE__), 'command', '*.rb')].sort.each do |file|
         require file
       end
     end
@@ -29,7 +28,7 @@ module Nimbu
     end
 
     def self.files
-      @@files ||= Hash.new {|hash,key| hash[key] = File.readlines(key).map {|line| line.strip}}
+      @@files ||= Hash.new { |hash, key| hash[key] = File.readlines(key).map { |line| line.strip } }
     end
 
     def self.namespaces
@@ -65,7 +64,7 @@ module Nimbu
     end
 
     def self.global_option(name, *args, &blk)
-      global_options << { :name => name.to_s, :args => args.sort.reverse, :proc => blk }
+      global_options << { name: name.to_s, args: args.sort.reverse, proc: blk }
     end
 
     def self.warnings
@@ -73,15 +72,13 @@ module Nimbu
     end
 
     def self.display_warnings
-      unless warnings.empty?
-        $stderr.puts(warnings.map {|warning| " !    #{warning}"}.join("\n"))
-      end
+      warn(warnings.map { |warning| " !    #{warning}" }.join("\n")) unless warnings.empty?
     end
 
-    global_option :help,    "--help", "-h"
-    global_option :debug,  "--debug"
+    global_option :help, '--help', '-h'
+    global_option :debug, '--debug'
 
-    def self.prepare_run(cmd, args=[])
+    def self.prepare_run(cmd, args = [])
       command = parse(cmd)
 
       if args.include?('-h') || args.include?('--help')
@@ -90,13 +87,14 @@ module Nimbu
         command = parse(cmd)
       end
 
-      if cmd == '--version'
+      if ['--version', '-v'].include?(cmd)
         cmd = 'version'
         command = parse(cmd)
       end
 
       @current_command = cmd
-      @anonymized_args, @normalized_args = [], []
+      @anonymized_args = []
+      @normalized_args = []
 
       opts = {}
       invalid_options = []
@@ -105,16 +103,16 @@ module Nimbu
         parser.base.long.delete('version')
         (global_options + (command && command[:options] || [])).each do |option|
           parser.on(*option[:args]) do |value|
-            if option[:proc]
-              option[:proc].call(value)
-            end
+            option[:proc].call(value) if option[:proc]
             opts[option[:name].gsub('-', '_').to_sym] = value
-            ARGV.join(' ') =~ /(#{option[:args].map {|arg| arg.split(' ', 2).first}.join('|')})/
-            @anonymized_args << "#{$1} _"
+            ARGV.join(' ') =~ /(#{option[:args].map { |arg| arg.split(' ', 2).first }.join('|')})/
+            @anonymized_args << "#{Regexp.last_match(1)} _"
             @normalized_args << "#{option[:args].last.split(' ', 2).first} _"
           end
         end
       end
+
+      parser.version = Nimbu::VERSION
 
       begin
         parser.order!(args) do |nonopt|
@@ -122,8 +120,8 @@ module Nimbu
           @anonymized_args << '!'
           @normalized_args << '!'
         end
-      rescue OptionParser::InvalidOption => ex
-        invalid_options << ex.args.first
+      rescue OptionParser::InvalidOption => e
+        invalid_options << e.args.first
         @anonymized_args << '!'
         @normalized_args << '!'
         retry
@@ -135,52 +133,54 @@ module Nimbu
       @current_options = opts
       @invalid_arguments = invalid_options
 
-      if opts[:debug]
-        Nimbu.debug = true
-      end
+      Nimbu.debug = true if opts[:debug]
 
       @anonymous_command = [ARGV.first, *@anonymized_args].join(' ')
       begin
         usage_directory = "#{home_directory}/.nimbu/usage"
         FileUtils.mkdir_p(usage_directory)
         usage_file = usage_directory << "/#{Nimbu::VERSION}"
-        usage = if File.exists?(usage_file)
-          json_decode(File.read(usage_file).force_encoding('UTF-8'))
-        else
-          {}
-        end
+        usage = if File.exist?(usage_file)
+                  json_decode(File.read(usage_file).force_encoding('UTF-8'))
+                else
+                  {}
+                end
         usage[@anonymous_command] ||= 0
         usage[@anonymous_command] += 1
         File.write(usage_file, json_encode(usage) + "\n")
-      rescue
+      rescue StandardError
         # usage writing is not important, allow failures
       end
 
       if command
         command_instance = command[:klass].new(args.dup, opts.dup)
 
-        if !@normalized_args.include?('--app _') && (implied_app = command_instance.app rescue nil)
+        if !@normalized_args.include?('--app _') && (implied_app = begin
+          command_instance.app
+        rescue StandardError
+          nil
+        end)
           @normalized_args << '--app _'
         end
-        @normalized_command = [ARGV.first, @normalized_args.sort_by {|arg| arg.gsub('-', '')}].join(' ')
+        @normalized_command = [ARGV.first, @normalized_args.sort_by { |arg| arg.gsub('-', '') }].join(' ')
 
-        [ command_instance, command[:method] ]
+        [command_instance, command[:method]]
       else
         error([
           "`#{cmd}` is not a Nimbu command.",
           suggestion(cmd, commands.keys + command_aliases.keys),
-          "See `Nimbu help` for a list of available commands."
+          'See `Nimbu help` for a list of available commands.'
         ].compact.join("\n"))
       end
     end
 
-    def self.run(cmd, arguments=[])
+    def self.run(cmd, arguments = [])
       begin
         object, method = prepare_run(cmd, arguments.dup)
         object.send(method)
-      rescue Interrupt, StandardError, SystemExit => error
+      rescue Interrupt, StandardError, SystemExit => e
         # load likely error classes, as they may not be loaded yet due to defered loads
-        raise(error)
+        raise(e)
       end
     # rescue Nimbu::API::Errors::Unauthorized, RestClient::Unauthorized
     #   puts "Authentication failure"
@@ -219,10 +219,10 @@ module Nimbu
     rescue CommandFailed => e
       error e.message
     rescue OptionParser::ParseError
-      commands[cmd] ? run("help", [cmd]) : run("help")
+      commands[cmd] ? run('help', [cmd]) : run('help')
     rescue Excon::Errors::SocketError => e
       if e.message == 'getaddrinfo: nodename nor servname provided, or not known (SocketError)'
-        error("Unable to connect to Nimbu API, please check internet connectivity and try again.")
+        error('Unable to connect to Nimbu API, please check internet connectivity and try again.')
       else
         raise(e)
       end
@@ -234,25 +234,30 @@ module Nimbu
       commands[cmd] || commands[command_aliases[cmd]]
     end
 
-    def self.extract_error(body, options={})
+    def self.extract_error(body, _options = {})
       default_error = block_given? ? yield : "Internal server error.\nRun 'nimbu status' to check for known platform issues."
       parse_error_xml(body) || parse_error_json(body) || parse_error_plain(body) || default_error
     end
 
     def self.parse_error_xml(body)
-      xml_errors = REXML::Document.new(body).elements.to_a("//errors/error")
-      msg = xml_errors.map { |a| a.text }.join(" / ")
+      xml_errors = REXML::Document.new(body).elements.to_a('//errors/error')
+      msg = xml_errors.map { |a| a.text }.join(' / ')
       return msg unless msg.empty?
     rescue Exception
     end
 
     def self.parse_error_json(body)
-      json = json_decode(body.to_s) rescue false
+      json = begin
+        json_decode(body.to_s)
+      rescue StandardError
+        false
+      end
       json ? json['error'] : nil
     end
 
     def self.parse_error_plain(body)
-      return unless body.respond_to?(:headers) && body.headers[:content_type].to_s.include?("text/plain")
+      return unless body.respond_to?(:headers) && body.headers[:content_type].to_s.include?('text/plain')
+
       body.to_s
     end
   end
