@@ -31,7 +31,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'netrc'
   s.add_dependency 'filewatcher'
 
-  s.add_development_dependency 'bundler', '~> 1.3'
+  s.add_development_dependency 'bundler'
   s.add_development_dependency 'rake'
   s.add_development_dependency 'awesome_print'
   s.add_development_dependency 'pry'
