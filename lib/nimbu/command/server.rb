@@ -117,32 +117,42 @@ class Nimbu::Command::Server < Nimbu::Command::Base
       }
       server_options.merge!({:Host => options[:host]}) if options[:host]
       Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
-        [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
+        [:INT, :TERM].each do |sig| 
+          trap(sig) do 
+            server.respond_to?(:stop!) ? server.stop! : server.stop
+            exit(0)
+          end
+        end
       end
     end
 
     haml_thread = Thread.new do
-      # $stdout.reopen(compiler_write)
-      # compiler_read.close
+      Process.setproctitle("#{$0} => nimbu-toolbelt haml")
       puts "Starting watcher..."
       HamlWatcher.watch
     end if @with_haml
 
-    if @with_compass
+    compass_pid = if @with_compass
+      Process.setproctitle("#{$0} => nimbu-toolbelt compass")
       puts "Starting..."
       cmd = "bundle exec nimbu server:compass"
-      compass_pid = Process.spawn(cmd, out: $stdout, err: [:child, :out])
+      Process.spawn(cmd, out: $stdout, err: [:child, :out])
     end
 
     server_thread.join
     haml_thread.join if @with_haml
 
-    [:INT, :TERM].each do |sig|
+    [:HUP, :INT, :TERM].each do |sig|
       trap(sig) do
-        puts yellow("\n== Waiting for all processes to finish...")
-        Process.kill('INT', compass_pid) if compass_pid && running?(compass_pid)
-        Process.waitall
-        puts green("== Nimbu has ended its work " + bold("(crowd applauds!)\n"))
+        should_wait = false
+
+        if compass_pid && running?(compass_pid)
+          should_wait = true
+          Process.kill('INT', compass_pid)
+        end
+
+        Process.waitall if should_wait
+        exit(0)
       end
     end
 
@@ -166,7 +176,14 @@ class Nimbu::Command::Server < Nimbu::Command::Base
       }
       server_options.merge!({:Host => options[:host]}) if options[:host]
       Rack::Handler::Thin.run Nimbu::Server::Base, **server_options  do |server|
-        [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
+        Process.setproctitle("#{$0} => nimbu-toolbelt server")
+
+        [:INT, :TERM].each do |sig| 
+          trap(sig) do 
+            server.respond_to?(:stop!) ? server.stop! : server.stop
+            exit(0)
+          end
+        end
       end
     end
 
@@ -175,7 +192,8 @@ class Nimbu::Command::Server < Nimbu::Command::Base
       haml_read.close
       puts "Starting..."
       haml_listener = HamlWatcher.watch
-      [:INT, :TERM].each do |sig|
+      Process.setproctitle("#{$0} => nimbu-toolbelt haml")
+      [:HUP, :INT, :TERM].each do |sig|
         Signal.trap(sig) do
           puts green("== Stopping HAML watcher\n")
           Thread.new { haml_listener.stop }
@@ -185,6 +203,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     end if @with_haml
 
     compass_pid = Process.fork do
+      Process.setproctitle("#{$0} => nimbu-toolbelt compass")
       $stdout.reopen(compass_write)
       compass_read.close
       puts "Starting..."
@@ -192,7 +211,10 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     end if @with_compass
 
     watch_server_pid = Process.fork do
-      trap('INT') { exit }
+      Process.setproctitle("#{$0} => nimbu-toolbelt server-watcher")
+
+      [:HUP, :INT, :TERM].each { |sig| trap(sig) { exit } }
+      
       server_write.close
       server_read.each do |line|
         print cyan("SERVER:  ") + white(line) + ""
@@ -200,7 +222,9 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     end
 
     watch_haml_pid = Process.fork do
-      trap('INT') { exit }
+      Process.setproctitle("#{$0} => nimbu-toolbelt haml-watcher")
+      [:HUP, :INT, :TERM].each { |sig| trap(sig) { exit } }
+
       haml_write.close
       haml_read.each do |line|
         print magenta("HAML:    ") + white(line) + ""
@@ -208,21 +232,38 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     end if @with_haml
 
     watch_compass_pid = Process.fork do
-      trap('INT') { exit }
+      Process.setproctitle("#{$0} => nimbu-toolbelt haml-compass")
+      [:HUP, :INT, :TERM].each { |sig| trap(sig) { exit } }
+
       compass_write.close
       compass_read.each do |line|
         print yellow("COMPASS: ") + white(line) + ""
       end
     end if @with_compass
 
-    [:INT, :TERM].each do |sig|
+    [:HUP, :INT, :TERM].each do |sig|
       trap(sig) do
-        puts yellow("\n== Waiting for all processes to finish...")
-        Process.kill('INT', haml_pid) if haml_pid && running?(haml_pid)
-        Process.waitall
-        puts green("== Nimbu has ended its work " + bold("(crowd applauds!)\n"))
+        should_wait = false
+        @child_pids_running.each do |pid|
+          if running?(server_pid)
+            should_wait = true
+            Process.kill('INT', pid)
+          end
+        end
+
+        Process.waitall if should_wait
+        exit(0)
       end
     end
+
+    @child_pids_running = [
+      server_pid,
+      haml_pid,
+      compass_pid,
+      watch_server_pid,
+      watch_haml_pid,
+      watch_compass_pid
+    ].compact!
 
     Process.waitall
   end
