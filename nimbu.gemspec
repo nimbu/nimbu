@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'term-ansicolor', '~> 1.0.5'
   s.add_dependency 'nimbu-api', '~> 0.4.4'
   s.add_dependency 'rubyzip'
-  s.add_dependency 'sinatra', '~> 2.0.2'
+  s.add_dependency 'sinatra', '~> 2.1.0'
   s.add_dependency 'sinatra-contrib'
   s.add_dependency 'rb-fsevent', '~> 0.9'
   s.add_dependency 'thin'
@@ -30,6 +30,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'wdm'
   s.add_dependency 'netrc'
   s.add_dependency 'filewatcher'
+  s.add_dependency 'lolcat'
 
   s.add_development_dependency 'bundler'
   s.add_development_dependency 'rake'

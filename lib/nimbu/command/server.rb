@@ -25,6 +25,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     require 'thin'
     require 'filewatcher'
     require 'pathname'
+    require 'lolcat'
 
     # Check if config file is present?
     if !Nimbu::Auth.read_configuration
@@ -63,13 +64,13 @@ class Nimbu::Command::Server < Nimbu::Command::Base
       services = []
       services << "HAML" if @with_haml
       services << "Compass" if @with_compass
-      title = "Starting up Nimbu Server"
-      title << " (with local #{services.join(' and ')} watcher)" if @with_compass || @with_haml
-      title << " (skipping cookies check)" if @no_cookies
-      title << " (proxying webpack resources to #{Nimbu.cli_options[:webpack_url]})" if @webpack_resources
+      title = "Starting up local Nimbu Toolbelt Server (v#{Nimbu::VERSION}, using Ruby #{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}):"
+      title << "\n - with local #{services.join(' and ')} watcher" if @with_compass || @with_haml
+      title << "\n - skipping cookies check" if @no_cookies
+      title << "\n - proxying webpack resources to #{Nimbu.cli_options[:webpack_url]}" if @webpack_resources
       title << " ..."
       puts white("\n#{title}")
-      puts green(nimbu_header)
+      puts nimbu_header
       puts green("\nConnnected to '#{Nimbu::Auth.site}.#{Nimbu::Auth.admin_host}', using '#{Nimbu::Auth.theme}' theme#{Nimbu.debug ? ' (in debug mode)'.red : nil}.\n")
 
       if Nimbu::Helpers.running_on_windows?
@@ -164,7 +165,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
         :DocumentRoot       => Dir.pwd
       }
       server_options.merge!({:Host => options[:host]}) if options[:host]
-      Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
+      Rack::Handler::Thin.run Nimbu::Server::Base, **server_options  do |server|
         [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
       end
     end
@@ -226,15 +227,29 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     Process.waitall
   end
 
+  def nimbu_ascii_art
+    %{
+ _   _ _           _          _____           _ _          _ _
+| \\ | (_)_ __ ___ | |__  _   |_   _|__   ___ | | |__   ___| | |_
+|  \\| | | '_ ` _ \\| '_ \\| | | || |/ _ \\ / _ \\| | '_ \\ / _ \\ | __|
+| |\\  | | | | | | | |_) | |_| || | (_) | (_) | | |_) |  __/ | |_
+|_| \\_|_|_| |_| |_|_.__/ \\__,_||_|\\___/ \\___/|_|_.__/ \\___|_|\\__|}         
+  end
+
   def nimbu_header
-    h = ""
-    h << "\n             o8o                     .o8"
-    h << "\n             `\"'                    \"888"
-    h << "\nooo. .oo.   oooo  ooo. .oo.  .oo.    888oooo.  oooo  oooo"
-    h << "\n`888P\"Y88b  `888  `888P\"Y88bP\"Y88b   d88' `88b `888  `888"
-    h << "\n 888   888   888   888   888   888   888   888  888   888"
-    h << "\n 888   888   888   888   888   888   888   888  888   888"
-    h << "\no888o o888o o888o o888o o888o o888o  `Y8bod8P'  `V88V\"V8P'"
+    length = nimbu_ascii_art.split("\n").last.length
+    print white("\n" + "=" * length)
+    buf = StringIO.new(nimbu_ascii_art)
+    opts = {
+      :animate => false,
+      :duration => 12,
+      :os => rand * 8192,
+      :speed => 20,
+      :spread => 8.0,
+      :freq => 0.3
+    }
+    Lol.cat buf, opts
+    print white("\n\n" + "=" * length)
   end
 
   def running?(pid)
