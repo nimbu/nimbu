@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'term-ansicolor', '~> 1.0.5'
   s.add_dependency 'nimbu-api', '~> 0.4.4'
   s.add_dependency 'rubyzip'
-  s.add_dependency 'sinatra', '~> 2.1.0'
+  s.add_dependency 'sinatra', '~> 2.2.3'
   s.add_dependency 'sinatra-contrib'
   s.add_dependency 'rb-fsevent', '~> 0.9'
   s.add_dependency 'thin'
