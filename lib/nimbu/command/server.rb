@@ -17,6 +17,7 @@ class Nimbu::Command::Server < Nimbu::Command::Base
   # --webpack RES            # comma separated list of webpack resources (relative to /javascripts)
   # --webpackurl URL         # proxy requests for webpack resources to the given URL prefix (default: http://localhost:8080)
   # --nocookies              # disable session refresh cookie check
+  # --dir DIR                # root of your project (default: current directory)
   #
   def index
     require 'rubygems'
@@ -26,6 +27,9 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     require 'filewatcher'
     require 'pathname'
     require 'lolcat'
+    require 'socket'
+
+    Nimbu.cli_options[:dir] = options[:dir] if options[:dir]
 
     # Check if config file is present?
     if !Nimbu::Auth.read_configuration
@@ -81,17 +85,6 @@ class Nimbu::Command::Server < Nimbu::Command::Base
     end
   end
 
-  def bare
-    puts "Starting server..."
-    server_options = {
-      :Port               => options[:port] || 4567,
-      :DocumentRoot       => Dir.pwd
-    }
-    Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
-      [:INT, :TERM].each { |sig| trap(sig) { server.respond_to?(:stop!) ? server.stop! : server.stop } }
-    end
-  end
-
   def haml
     require 'haml'
     puts "Starting..."
@@ -107,13 +100,36 @@ class Nimbu::Command::Server < Nimbu::Command::Base
 
   protected
 
+  def ipv6_supported?
+    begin
+      socket = Socket.new(Socket::AF_INET6, Socket::SOCK_STREAM)
+      socket.close
+      true
+    rescue Errno::EAFNOSUPPORT
+      false
+    end
+  end
+
+  def project_root
+    Nimbu.cli_options[:dir] || Dir.pwd
+  end
+
+  def default_host
+    if ipv6_supported?
+      "::"
+    else
+      "127.0.0.1"
+    end
+  end
+
   def run_on_windows!
     server_thread = Thread.new do
     Thread.current[:stdout] = StringIO.new
       puts "Starting server..."
       server_options = {
         :Port               => options[:port] || 4567,
-        :DocumentRoot       => Dir.pwd
+        :DocumentRoot       => project_root,
+        :Host               => default_host
       }
       server_options.merge!({:Host => options[:host]}) if options[:host]
       Rack::Handler::Thin.run Nimbu::Server::Base, server_options  do |server|
@@ -172,7 +188,8 @@ class Nimbu::Command::Server < Nimbu::Command::Base
       puts "Starting server..."
       server_options = {
         :Port               => options[:port] || 4567,
-        :DocumentRoot       => Dir.pwd
+        :DocumentRoot       => options[:dir] || Dir.pwd,
+        :Host               => default_host,
       }
       server_options.merge!({:Host => options[:host]}) if options[:host]
       Rack::Handler::Thin.run Nimbu::Server::Base, **server_options  do |server|
@@ -309,7 +326,7 @@ class HamlWatcher
 
     def watch
       refresh
-      current_dir = File.join(Dir.pwd, 'haml/')
+      current_dir = File.join(Nimbu.cli_options[:dir] || Dir.pwd, 'haml/')
       puts ">>> Haml is polling for changes. Press Ctrl-C to Stop."
       Filewatcher.new('haml/**/*.haml', every: true).watch do |filename, event|
         begin

@@ -87,7 +87,7 @@ class Nimbu::Auth
     end
 
     def configuration_file
-      "#{Dir.pwd}/nimbu.yml"
+      "#{Nimbu.cli_options[:dir] || Dir.pwd}/nimbu.yml"
     end
 
     def delete_configuration

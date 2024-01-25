@@ -22,7 +22,7 @@ module Nimbu
 
       set :method_override, true
       set :static, true                             # set up static file routing
-      set :public_folder, Dir.pwd # set up the static dir (with images/js/css inside)
+      set :public_folder, Nimbu.cli_options[:dir] || Dir.pwd # set up the static dir (with images/js/css inside)
 
       set :views,  File.expand_path('../views', __FILE__) # set up the views dir
       set :haml, { format: :html5 }                    # if you use haml
@@ -229,8 +229,8 @@ module Nimbu
       end
 
       def load_files(type)
-        glob = Dir["#{Dir.pwd}/#{type}/**/*.liquid","#{Dir.pwd}/#{type}/**/*.liquid.haml"]
-        directory = "#{Dir.pwd}/#{type}/"
+        glob = Dir["#{project_root}/#{type}/**/*.liquid","#{project_root}/#{type}/**/*.liquid.haml"]
+        directory = "#{project_root}/#{type}/"
         glob.each do |file|
           name = file.gsub(/#{directory}/i,"")
           code = IO.read(file).force_encoding('UTF-8')
@@ -245,6 +245,10 @@ module Nimbu
 
       def self.private_file?(request)
         request.path =~ /^\/downloads\// && request.query_string =~ /key=/
+      end
+
+      def project_root
+        Nimbu.cli_options[:dir] || Dir.pwd
       end
 
     end
