@@ -14,6 +14,13 @@ Gem::Specification.new do |s|
 
   s.files = `git ls-files`.split("\n").select { |d| d =~ %r{^(README|bin/|data/|ext/|lib/|spec/|test/)} }
   s.executables = 'nimbu'
+  s.metadata    = { 'source_code_uri' => 'https://github.com/nimbu/nimbu' }
+
+  s.post_install_message = <<~MSG
+    The nimbu gem is deprecated and no longer maintained.
+    Use the Nimbu Go CLI instead: brew install nimbu/tap/nimbu
+    More info: https://github.com/nimbu/cli
+  MSG
 
   # specify any dependencies here; for example:
   s.add_dependency 'term-ansicolor', '~> 1.0.5'

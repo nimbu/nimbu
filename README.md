@@ -1,5 +1,9 @@
 # Nimbu CLI
 
+> [!WARNING]
+> **Deprecated.** This gem is no longer maintained and receives no security updates.
+> Use the [Nimbu Go CLI](https://github.com/nimbu/cli) instead: `brew install nimbu/tap/nimbu`.
+
 [![Gem Version](https://badge.fury.io/rb/nimbu.png)](http://badge.fury.io/rb/nimbu)
 
 The Nimbu CLI is used to manage and develop Nimbu e-commerce sites from the command line.
